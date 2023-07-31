@@ -2,7 +2,6 @@ import re
 import glob
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 
 def makeDataframe(fileList):
     # Column names for the DataFrame
