@@ -2,6 +2,7 @@ import re
 import glob
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 def makeDataframe(fileList):
     # Column names for the DataFrame
@@ -9,8 +10,9 @@ def makeDataframe(fileList):
 
     # Creating the DataFrame
     df = pd.DataFrame(fileList, columns=columns)
-    print(df)
-    
+        
+    print(df['Department'].head(40))
+
 def find_department(fileList):
     department_names_list = read_agency_names_from_csv("agency_names.csv")
     for file in fileList:
@@ -21,18 +23,22 @@ def find_department(fileList):
         for index, line in enumerate(lines_list):
             if lineCounter <= 20:
                 for department in department_names_list:
+                    regExDep=easierRegEx(department)
                     if not departmentFound:
-                        departmentMatch=re.search(department, line, re.IGNORECASE)
+                        departmentMatch=re.search(regExDep, line, re.IGNORECASE)
                         if departmentMatch:
                             departmentFound=True
                             file.append(departmentMatch.group())
                         else:
-                            newLine=line+lines_list[index+1]
-                            newDepartmentMatch=re.search(department, newLine, re.IGNORECASE)
-                            if newDepartmentMatch:
-                                departmentFound=True
-                                file.append(newDepartmentMatch.group())
-            lineCounter=lineCounter+1
+                            if (index+1)<(len(lines_list)-1):
+                                newLine=line+lines_list[index+1]
+                                newDepartmentMatch=re.search(regExDep, newLine, re.IGNORECASE)
+                                if newDepartmentMatch:
+                                    departmentFound=True
+                                    file.append(newDepartmentMatch.group())
+                lineCounter=lineCounter+1
+        if not departmentFound:
+            file.append("No Department Found")
         lineCounter=1
         agencyPattern1=r"Agency\s*:\s*"
         agencyPattern2=r"Agency\s*:\s*([^.\n]*\.[^\n]*)"
@@ -51,7 +57,16 @@ def find_department(fileList):
                             lineCounter=lineCounter+1    
         if agencyFound==False:
             file.append("No Related Agency")
-        
+
+def easierRegEx(string):
+    regexDep=''
+    departmentWords = string.split() 
+    for index,word in enumerate(departmentWords):
+        if index<(len(departmentWords)-1):
+            regexDep=regexDep+word+'\s*'
+        else:
+            regexDep=regexDep+word
+    return regexDep
 
 def read_agency_names_from_csv(file_path):
     df = pd.read_csv(file_path)
@@ -76,6 +91,10 @@ def find_each_file(sectionDict, date):
                     fileList[-1][1]=fileList[-1][1]+line
             elif (len(fileList)==0):
                 fileList.append(["First Entry", line, key])
+    with open("BRUH",'w', encoding='utf8') as f:
+        for file in fileList:
+            f.write(file[1])
+        
     return fileList    
                 
 def additionalSections(file_path, sectionDict):
@@ -134,8 +153,10 @@ def main():
         date=os.path.basename(file_path).split('.txt')[0]
         additionalSections(file_path, sectionDict)
         fileList=find_each_file(sectionDict, date)
+                
         find_department(fileList)
         makeDataframe(fileList)
+        easierRegEx("Department of Homeland Security")
 
 if __name__ == "__main__":
     main()
