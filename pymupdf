@@ -10,7 +10,13 @@ RE = r'\s*F\s*[éèêëeE]\s*d\s*[éèêëeE]\s*r\s*a\s*l\s*R\s*[éèêëeE]\s*g
 
 def fix_vowels_line(line):
     replacements = {
-        # Add your replacements here
+                'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a', 'æ': 'a',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o', 'ø': 'o',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ÿ': 'y', 'ý': 'y',
+        'œ': 'o', 'ñ': 'n', 'ç': 'c'
     }
     for old, new in replacements.items():
         line = line.replace(old, new)
