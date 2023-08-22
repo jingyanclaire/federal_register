@@ -42,19 +42,19 @@ def find_department_agency(fileList):
 def find_dep_agency(file, lines_list):
     #initialize variables for whether the dep/agency has been found as well as the line counter
     if lines_list.find('AGENCY :')!=-1:
-        Found_agc =True
+        #extract the place that agency would exist
         AGENCY=lines_list[lines_list.find('AGENCY :')+8:lines_list.find('ACTION :')]
-        # file.append(AGENCY)
     else:
         AGENCY=''
-    if lines_list.find('–P')!=-1 or lines_list.find('from further violations of the Act.')!=-1:
+    if lines_list.find('–P')!=-1 or lines_list.find('from further violations of the Act.')!=-1: #to get font letter starting place
         if lines_list.find('–P')!=-1:
             index=lines_list.find('–P')
             skew=3
         else:
             index=lines_list.find('from further violations of the Act.')
-            skew=35
+            skew=35 #for every starting chapter page
 
+        #by comparing the starting text with extracted agency
         aa=lines_list[index+skew:index+100]
         bb=aa.split(' ')
         departement=''
@@ -63,8 +63,8 @@ def find_dep_agency(file, lines_list):
                 departement=departement+i+' '
             else:
                 break
-        departement_new=departement[:-1].replace('DEPARTMENT OF ','')
-        if departement_new==AGENCY.upper():
+        departement_new=departement[:-1]
+        if departement_new==AGENCY.upper()[:-1]:
             file.append("No Department Found")
         else:
             file.append(departement[:-1])
