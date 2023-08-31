@@ -2,7 +2,7 @@ import re
 import glob
 import pandas as pd
 import os
-
+// make the dataFrame
 def makeDataframe(fileList, counter):
     # Column names for the DataFrame
     columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency (If Applicable)' ]
@@ -25,6 +25,7 @@ def makeDataframe(fileList, counter):
     df.to_csv(str(csvDf.iloc[0]['Date'])+'TEXT.csv',index=True)
     return counter
 
+//clean up list to avoid false department detection
 def cleanUpList(fileList):
     for file in fileList:
         if file[5].isupper():
