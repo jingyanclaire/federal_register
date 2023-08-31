@@ -20,7 +20,7 @@ def makeDataframe(fileList, counter):
     #print first 40 entries of the Date column
     #print(df['Date'].head(40))
     #print first 40 entries of the text column
-    #print(df['Text'].head(40))
+    print(df)
     csvDf.to_csv(str(csvDf.iloc[0]['Date'])+'.csv',index=True)
     df.to_csv(str(csvDf.iloc[0]['Date'])+'TEXT.csv',index=True)
     return counter
@@ -29,6 +29,7 @@ def cleanUpList(fileList):
     for file in fileList:
         if file[5].isupper():
             file[4]='No Department Found'
+    fileList.pop()
             
 
 def find_department(fileList):
@@ -157,6 +158,7 @@ def additionalSections(file_path, sectionDict):
     noticeHeader= r'Notices\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
     #pattern for reader aids
     readerAids=r'Reader\s+Aids\s+Federal\s+Register'
+    presidentialDocuments=r'\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Presidential\s*Documents'
     #read text file and read line by line 
     with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
@@ -168,9 +170,10 @@ def additionalSections(file_path, sectionDict):
             prMatches=re.findall(prPattern, line, re.IGNORECASE)
             noticeMatches=re.findall(noticePattern, line, re.IGNORECASE)
             readerMatches=re.findall(readerAids, line, re.IGNORECASE)
+            preMatches=re.search(presidentialDocuments, line, re.IGNORECASE)
             #if there is a reader match, exit loop
             #if there is a match for one of the sections, store into that section's value within the dictionary
-            if readerMatches:
+            if readerMatches or preMatches:
                 noticeFound=False
                 prFound=False
                 randRFound=False  
