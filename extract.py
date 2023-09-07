@@ -2,14 +2,16 @@ import re
 import glob
 import pandas as pd
 import os
-# make the dataFrame
-def makeDataframe(fileList, counter):
+
+#store collected data into dataframes
+def makeDataframe(fileList):
     # Column names for the DataFrame
     columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency (If Applicable)' ]
 
     # Creating the DataFrame
     df = pd.DataFrame(fileList, columns=columns)
     
+    #create data frame without text
     csvDf=df.drop('Text', axis=1)
     #print first 40 entries of the department column
     #print(df['Department'].head(40))
@@ -21,18 +23,30 @@ def makeDataframe(fileList, counter):
     #print(df['Date'].head(40))
     #print first 40 entries of the text column
     print(df)
-    csvDf.to_csv(str(csvDf.iloc[0]['Date'])+'.csv',index=True)
-    df.to_csv(str(csvDf.iloc[0]['Date'])+'TEXT.csv',index=True)
-    return counter
+    #output directory
+    directory = './output'
+    #fileName for both files
+    filename = str(csvDf.iloc[0]['Date'])+'.csv'
+    textFileName=str(csvDf.iloc[0]['Date'])+'text'+'.csv'
+    #path to write output files
+    file_path = os.path.join(directory, filename)
+    file_pathTEXt=os.path.join(directory, textFileName)
+    #create folder if not present
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    #write dataframes to csv files
+    csvDf.to_csv(file_path,index=True)
+    df.to_csv(file_pathTEXt,index=True)
 
-#clean up list to avoid false department detection
+
+#avoid false positive departmental detections
 def cleanUpList(fileList):
     for file in fileList:
         if file[5].isupper():
             file[4]='No Department Found'
     fileList.pop()
             
-
+#store department and agency names into pandas dataframes and start search for both
 def find_department(fileList):
     #read each name in department csv to a list
     department_names_list = read_agency_names_from_csv("department_names_only.csv", 'department.name')
@@ -54,7 +68,8 @@ def find_department(fileList):
         
         #agencyPattern1=r"Agency\s*:\s*"
         #agencyPattern2=r"Agency\s*:\s*([^.\n]*\.[^\n]*)"
-        
+    
+#find either department or agency being searched for and store into dataframe     
 def find_dep_agency(file, lines_list, names_list, dep_ag):
         #initialize variables for whether the dep/agency has been found as well as the line counter
         Found=False
@@ -76,7 +91,7 @@ def find_dep_agency(file, lines_list, names_list, dep_ag):
                         #if found, stop loop and store as the dep/agency for the entry
                         if match:
                             Found=True
-                            file.append(match.group())
+                            file.append(name)
                         #if not found
                         else:
                             #if not on the last line of the entry
@@ -88,16 +103,15 @@ def find_dep_agency(file, lines_list, names_list, dep_ag):
                                 #if found, stop loop and store as the dep/agency for the entry
                                 if newMatch:
                                     Found=True
-                                    file.append(newMatch.group())
+                                    file.append(name)
                 #raise line counter
                 lineCounter=lineCounter+1
         #if no dep/agency found for entire entry store as such
         if not Found:
             file.append("No "+dep_ag+" Found")
             
-
+#take every word in the string being searched for, add a \s* after 
 def easierRegEx(string):
-    #take every word in the string being searched for, add a \s* after 
     regexDep=''
     departmentWords = string.split() 
     for index,word in enumerate(departmentWords):
@@ -114,7 +128,7 @@ def find_each_file(sectionDict, date):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"(FR Doc\.\s* \d{4}–\d{5}\s* Filed\s* \d{1,2}–\d{1,2}–\d{2}\s*; \d{1,2}:\s*\d{2}\s*[ap]m\])"
+    pattern = r"\[FR Doc\. .+ Filed .+; .+ [ap]m]"
     #for every section, and related text found in the dictionary
     for key, value in sectionDict.items():
         #split every line and store into list
@@ -205,7 +219,6 @@ def main():
     folder_path = r'C:\Users\vishp\Desktop\Python\FDR\Extracting_info\Dates/*.txt'
     #list containing every file path within the folder
     text_files = glob.glob(folder_path)
-    counter=0
     #for every file in the folder contain the files that are being analyzed 
     for file_path in text_files:
         #remake the dictionary
@@ -221,7 +234,7 @@ def main():
         #clean up list
         cleanUpList(fileList)
         #store entry data into a dataframe
-        counter=makeDataframe(fileList, counter)
+        makeDataframe(fileList)
 
 if __name__ == "__main__":
     main()
