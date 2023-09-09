@@ -39,7 +39,7 @@ def makeDataframe(fileList):
     df.to_csv(file_pathTEXt,index=True)
 
 
-#avoid false positive departmental detections
+#avoid false positive departmental detections when no department 
 def cleanUpList(fileList):
     for file in fileList:
         if file[5].isupper():
@@ -54,7 +54,7 @@ def find_department(fileList):
     #read each name in the agency csv to a list
     agency_names_list = read_agency_names_from_csv("agency_names_only.csv", 'agency.name')
     
-    #for every entry found n the entry list
+    #for every entry found in the entry list
     for file in fileList:
         #split after each line and store each line to a list
         text=file[1]
@@ -73,13 +73,11 @@ def find_department(fileList):
 def find_dep_agency(file, lines_list, names_list, dep_ag):
         #initialize variables for whether the dep/agency has been found as well as the line counter
         Found=False
-        lineCounter=0
-        
         #for every line and index within the lines list
         for index, line in enumerate(lines_list):
             #search only the first 20 lines
-            if lineCounter <= 20:
-                #for every name of dep/agency within the list given
+            if index <= 20:
+                #for every name of dep/agency within the csv 
                 for name in names_list:
                     #create a easier to find regex statement
                     regExDep=easierRegEx(name)
@@ -91,7 +89,10 @@ def find_dep_agency(file, lines_list, names_list, dep_ag):
                         #if found, stop loop and store as the dep/agency for the entry
                         if match:
                             Found=True
-                            file.append(name)
+                            if (match.group().isupper()):
+                                file.append(name.upper())
+                            else:
+                                file.append(name)
                         #if not found
                         else:
                             #if not on the last line of the entry
@@ -103,19 +104,29 @@ def find_dep_agency(file, lines_list, names_list, dep_ag):
                                 #if found, stop loop and store as the dep/agency for the entry
                                 if newMatch:
                                     Found=True
-                                    file.append(name)
-                #raise line counter
-                lineCounter=lineCounter+1
+                                    if (newMatch.group().isupper()):
+                                        file.append(name.upper())
+                                    else:
+                                            file.append(name)
         #if no dep/agency found for entire entry store as such
         if not Found:
             file.append("No "+dep_ag+" Found")
             
-#take every word in the string being searched for, add a \s* after 
+#take every word in the string being searched for, add a [.,\s]* after
+#after every letter add a \s{0,3}
 def easierRegEx(string):
-    regexDep=''
-    departmentWords = string.split() 
-    for index,word in enumerate(departmentWords):
-            regexDep=regexDep+word+'\s*'
+    LetterSeparator=''
+    regexDep=""
+    #for each letter in the string, add a \s{0,3}
+    #allows for zero-three spaces between the letters to account for encoding errors with spacing
+    for letter in string:
+        if(letter!=''):
+            LetterSeparator=LetterSeparator+letter+'\s{0,3}'
+    #for each word in the string, add a [.,\s]*
+    #allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
+    departmentWords = LetterSeparator.split()
+    for word in departmentWords:
+           regexDep=regexDep+word+'[.,\s]*'
     return regexDep
 
 #read either department or agency names from a given csv
@@ -128,15 +139,15 @@ def find_each_file(sectionDict, date):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"\[FR Doc\. .+ Filed .+; .+ [ap]m]"
+    pattern = r"F\s*R\s*Doc\. .+ Filed .+; .+ [ap]m"
     #for every section, and related text found in the dictionary
     for key, value in sectionDict.items():
         #split every line and store into list
         lines_list = value.split("\n")
         for line in lines_list:
-            #find if line contains FR Doc at the end 
+            #find if line contains FR Doc pattern
             match=re.search(pattern, line, re.IGNORECASE)
-            #if it contains FR Doc
+            #if it contains FR Doc pattern
             if match:
                 #add the FR Doc Number as the number of the last entry as an indentifier  
                 fileList[-1][0]=match.group()
@@ -164,9 +175,9 @@ def additionalSections(file_path, sectionDict):
     prFound=False
     noticeFound=False
     #patterns for each sections's regular page header
-    randRPattern = r"\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Rules\s+and\s+Regulations\s*"
-    prPattern=r"\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Proposed\s+Rules\s*"
-    noticePattern=r"\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Notices\s*"
+    randRPattern = r"Federal Register(.+?)[VY]ol(.*?)No(.+?)Rules\s*and\s*Regulations"
+    prPattern=r"Federal Register(.+?)[VY]ol(.*?)No(.+?)Proposed\s*Rules"
+    noticePattern=r"[Ff]ederal [Rr]egister(.+?)[VvYy]ol(.*?)No(.+?)Notices"
     #patterns for each section's first page
     RRHeader=r'Rules\s*and\s*Regulations\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
     PRHeader=r'Proposed\s*Rules\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
