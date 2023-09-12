@@ -168,6 +168,31 @@ def find_each_file(sectionDict, date):
                 fileList.append(["First Entry", line, key, date])
     return fileList    
 
+def findSectionHeaders(index, file):
+    sectionFound=False
+    section="Notices"
+    #patterns for each section's first page
+    RRHeader=easierRegEx("Rules and Regulations")
+    PRHeader=easierRegEx("Proposed Rules")
+    noticeHeader= easierRegEx("Notices")
+    for i in range(10):
+        if not (sectionFound):
+            line=file[index-i]
+            RRHeadermatch=re.search(RRHeader, line, re.IGNORECASE)
+            PRHeaderMatch=re.search(PRHeader, line, re.IGNORECASE)
+            noticeHeaderMatch=re.search(noticeHeader, line, re.IGNORECASE)
+            if(RRHeadermatch):
+                sectionFound=True
+                section= "Rules and Regulations"
+            elif (PRHeaderMatch):
+                sectionFound=True
+                section= "Proposed Rules"
+            elif(noticeHeaderMatch):
+                sectionFound=True
+                section="Notices"
+    return section
+        
+        
 #find every section within a certain file 
 def additionalSections(file_path, sectionDict):
     #initialize boolean variables for each section
@@ -178,42 +203,41 @@ def additionalSections(file_path, sectionDict):
     randRPattern = r"Federal Register(.+?)[VY]ol(.*?)No(.+?)Rules\s*and\s*Regulations"
     prPattern=r"Federal Register(.+?)[VY]ol(.*?)No(.+?)Proposed\s*Rules"
     noticePattern=r"[Ff]ederal [Rr]egister(.+?)[VvYy]ol(.*?)No(.+?)Notices"
-    #patterns for each section's first page
-    RRHeader=r'Rules\s*and\s*Regulations\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
-    PRHeader=r'Proposed\s*Rules\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
-    noticeHeader= r'Notices\s*Federal\s*Register\s*(?:[1-9]\d{0,3}|10000)'
+    sectionStart=easierRegEx("This section of the FEDERAL REGISTER")
     #pattern for reader aids
     readerAids=r'Reader\s+Aids\s+Federal\s+Register'
     presidentialDocuments=r'\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Presidential\s*Documents'
     #read text file and read line by line 
     with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
+        linesList=file.readlines()
+        for index,line in enumerate(linesList):
+            section=""
             #find if there is a match for the pattern within the line
-            RRHeadermatches=re.findall(RRHeader, line, re.IGNORECASE)
-            PRHeaderMatches=re.findall(PRHeader, line, re.IGNORECASE)
-            noticeHeaderMatches=re.findall(noticeHeader, line, re.IGNORECASE)
             RRmatches=re.findall(randRPattern, line, re.IGNORECASE)
             prMatches=re.findall(prPattern, line, re.IGNORECASE)
             noticeMatches=re.findall(noticePattern, line, re.IGNORECASE)
             readerMatches=re.findall(readerAids, line, re.IGNORECASE)
-            preMatches=re.search(presidentialDocuments, line, re.IGNORECASE)
+            prezMatches=re.search(presidentialDocuments, line, re.IGNORECASE)
+            sectionHeaderMatch=re.search(sectionStart, line, re.IGNORECASE)
             #if there is a reader match, exit loop
             #if there is a match for one of the sections, store into that section's value within the dictionary
-            if readerMatches or preMatches:
+            if readerMatches or prezMatches:
                 noticeFound=False
                 prFound=False
                 randRFound=False  
-            elif (len(RRmatches)>0) or (len(RRHeadermatches)>0):
+            elif(sectionHeaderMatch):
+                section=findSectionHeaders(index,linesList)
+            if (len(RRmatches)>0 or (section=="Rules and Regulations")):
                 randRFound=True
                 prFound=False
                 noticeFound=False
                 sectionDict['Rules and Regulations']=sectionDict['Rules and Regulations']+line
-            elif (len(prMatches)>0) or (len(PRHeaderMatches)>0):
+            elif ((len(prMatches)>0)or(section=="Proposed Rules")):
                 prFound=True
                 randRFound=False
                 noticeFound=False
                 sectionDict['Proposed Rules']=sectionDict['Proposed Rules']+line 
-            elif (len(noticeMatches)>0) or (len(noticeHeaderMatches)>0):
+            elif (len(noticeMatches)>0 or (section=="Notices")):
                 noticeFound=True
                 prFound=False
                 randRFound=False
