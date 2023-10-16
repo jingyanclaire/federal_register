@@ -15,6 +15,7 @@ RE = r'\s*F\s*[éèêëeE]\s*d\s*[éèêëeE]\s*r\s*a\s*l\s*R\s*[éèêëeE]\s*g
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
 def fetch_response(url):
     response = requests.get(url)
+    # check the valid of website
     if response.status_code == 200 and len(response.content) > 1000:
         return response
     else:
@@ -31,6 +32,7 @@ def fix_vowels_line(line):
         'ÿ': 'y', 'ý': 'y',
         'œ': 'o', 'ñ': 'n', 'ç': 'c'
     }
+    # replace the vowels
     for old, new in replacements.items():
         line = line.replace(old, new)
     if re.match(RE, line):
@@ -41,6 +43,7 @@ def fix_vowels_line(line):
 # extract text from pdf file
 def get_txt(date, pdf_file, folder_path, word_margin=0.5):
     print(f"Extracting text from PDF for date: {date}")
+    # set the word margin
     laparams = LAParams(word_margin=word_margin)
     with pdfplumber.open(pdf_file) as pdf:
         lines = []
@@ -51,6 +54,7 @@ def get_txt(date, pdf_file, folder_path, word_margin=0.5):
                     line = fix_vowels_line(line)
                 lines.append(line)
 
+    # write the text
     with open(f'{folder_path}/{date}.txt', 'w', encoding='utf-8') as file:
         file.write('\n'.join(lines))
 
@@ -76,6 +80,7 @@ def process_date(year, month, day):
     date = f"{year}-{month_str}-{day_str}"
     url = f"https://www.govinfo.gov/content/pkg/FR-{date}/pdf/FR-{date}.pdf"
     print(f"Downloading file for date: {date}")
+    # check the valid of response
     try:
         response = fetch_response(url)
         pdf_file = io.BytesIO(response.content)
@@ -95,7 +100,9 @@ def is_empty(text):
 def check_and_redownload_empty_files(folder_path):
     redownloaded_files = []
     redownload_needed = False
+    # loop for the folder path
     for root, ds, fs in os.walk(folder_path):
+        # loop for the folder
         for file_name in fs:
             if file_name.endswith('.txt'):
                 with open(os.path.join(root, file_name), 'r', encoding='utf-8') as file:
@@ -119,6 +126,7 @@ def main():
     try:
         for year in range(1986, 1992):
             for month in range(1, 13):
+                # set thread pool's max size as 3
                 with ThreadPoolExecutor(max_workers=3) as executor:
                     days_in_month = 31
                     if month == 2:
@@ -130,6 +138,7 @@ def main():
                         days_in_month = 30
                     executor.map(process_date, [year] * days_in_month, [month] * days_in_month,
                                  range(1, days_in_month + 1))
+                    # check 3 times
                     for _ in range(3):
                         redownload_needed = check_and_redownload_empty_files(
                             f"D:\\pycharm\\pythonProject\\pdf-txt\\FR(miner)\\FR-{year}\\{str(month).zfill(2)}")
