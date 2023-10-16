@@ -76,6 +76,7 @@ def process_date(date_list):
 
 
 def find_empty():
+    # need to change the path of Empytfile
     with open(r'D:\pycharm\pythonProject\pdf-txt\Emptyfile2.txt', 'r', encoding='utf-8') as file:
         return file.readlines()
 
