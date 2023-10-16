@@ -18,6 +18,7 @@ def get_txt(date, html, folder_path):
 
 
 def make_folder(year, month, date, html):
+    # need to change the folder path
     folder_path = f"D:\\pycharm\\pythonProject\\pdf-txt\\FR\\FR-{year}\\{month}"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
