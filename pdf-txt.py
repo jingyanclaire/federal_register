@@ -7,11 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pdfminer.layout import LAParams
 import pdfplumber
 from retrying import retry
-
+# regular expression for the last entry of each departments
 # RE = r'\s*F\s*e\s*d\s*e\s*r\s*a\s*l\s*R\s*e\s*g\s*i\s*s\s*t\s*e\s*r\s*/\s*V\s*o\s*l\s*'
 RE = r'\s*F\s*[éèêëeE]\s*d\s*[éèêëeE]\s*r\s*a\s*l\s*R\s*[éèêëeE]\s*g\s*[LIil1íìîï]\s*s\s*t\s*[éèêëeE]\s*r\s*/\s*V\s*[Oo0óòôöõøœ]\s*[LIil1íìîï]\s*'
 
-
+# check if the website reponsed
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
 def fetch_response(url):
     response = requests.get(url)
@@ -20,6 +20,7 @@ def fetch_response(url):
     else:
         response.raise_for_status()
 
+# fix the vowels in the last entry
 def fix_vowels_line(line):
     replacements = {
         'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a', 'æ': 'a',
@@ -37,7 +38,7 @@ def fix_vowels_line(line):
 
     return line
 
-
+# extract text from pdf file
 def get_txt(date, pdf_file, folder_path, word_margin=0.5):
     print(f"Extracting text from PDF for date: {date}")
     laparams = LAParams(word_margin=word_margin)
@@ -53,15 +54,14 @@ def get_txt(date, pdf_file, folder_path, word_margin=0.5):
     with open(f'{folder_path}/{date}.txt', 'w', encoding='utf-8') as file:
         file.write('\n'.join(lines))
 
-
+# make the folder to store the files
 def make_folder(year, month, date, pdf_file):
     folder_path = f"D:\\pycharm\\pythonProject\\pdf-txt\\FR(miner)\\FR-{year}\\{month}"
-    # folder_path = f"D:\\pycharm\\pythonProject\\pdf-txt\\FR-{year}\\{month}"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     get_txt(date, pdf_file, folder_path)
 
-
+# accessing the website by date
 def process_date(year, month, day):
     global response
     if day < 10:
@@ -87,11 +87,11 @@ def process_date(year, month, day):
         response.close()
         time.sleep(1)
 
-
+# check if the text is empty
 def is_empty(text):
     return len(text.strip()) == 0
 
-
+# redownload the empty files
 def check_and_redownload_empty_files(folder_path):
     redownloaded_files = []
     redownload_needed = False
@@ -116,7 +116,6 @@ def check_and_redownload_empty_files(folder_path):
 
 
 def main():
-    # process_date(1980, 2, 11)
     try:
         for year in range(1986, 1992):
             for month in range(1, 13):
