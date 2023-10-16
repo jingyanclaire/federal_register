@@ -1,6 +1,7 @@
 import os
 import re
 
+# need to change the folder path
 folder_path = r'D:\pycharm\pythonProject\pdf-txt\FR'
 
 def is_cid_format(text):
