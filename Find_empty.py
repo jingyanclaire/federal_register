@@ -6,7 +6,7 @@ folder_path = r'D:\pycharm\pythonProject\pdf-txt\FR(miner)'
 def is_empty(text):
     return len(text)==0
 
-with open('Emptyfile2.txt', 'w') as result_file:
+with open('Emptyfile.txt', 'w') as result_file:
     for root, ds, fs in os.walk(folder_path):
         for file_name in fs:
             if file_name.endswith('.txt'):
