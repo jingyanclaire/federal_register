@@ -40,13 +40,13 @@ def additionalSections(file_path, sectionDict):
     prFound=False
     noticeFound=False
     #patterns for each sections's regular page header
-    randRPattern = easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*l\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Rules and Regulations")
-    prPattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*l\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Proposed Rules")
-    noticePattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*l\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Notices")
+    randRPattern = easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Rules and Regulations")
+    prPattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Proposed Rules")
+    noticePattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Notices")
     sectionStart=r"T\s{0,3}h\s{0,3}i\s{0,3}s\s{0,3}[.,\s]*\s{0,3}s\s{0,3}e\s{0,3}c\s{0,3}t\s{0,3}i\s{0,3}o\s{0,3}n\s{0,3}[.,\s]*\s{0,3}o\s{0,3}f\s{0,3}[.,\s]*\s{0,3}t\s{0,3}h\s{0,3}e\s{0,3}[.,\s]*\s{0,3}F\s{0,3}E\s{0,3}D\s{0,3}E\s{0,3}R\s{0,3}A\s{0,3}L\s{0,3}[.,\s]*\s{0,3}R\s{0,3}E\s{0,3}G\s{0,3}[IT]\s{0,3}S\s{0,3}T\s{0,3}E\s{0,3}R\s{0,3}[.,\s]*"
     #pattern for reader aids
-    readerAids=easierRegEx("Reader AidsFederal Register") 
-    presidentialDocuments=r'\d{1,5}\s*Federal\s*Register\s*\/\s*Vol\.\s*\d+\s*,\s*No\.\s*\d+\s*\/\s*\w+\s*,\s*\w+\s*\d+\s*,\s*\d+\s*\/\s*Presidential\s*Documents'
+    readerAids=easierRegEx("ReaderAidsFederalRegister") 
+    presidentialDocuments=easierRegEx("PresidentialDocuments")
     #read text file and read line by line 
     with open(file_path, 'r', encoding='utf-8') as file:
         linesList=file.readlines()
@@ -87,7 +87,7 @@ def additionalSections(file_path, sectionDict):
                         randRFound=False
                         sectionDict["Notices"]=sectionDict["Notices"]+line
             #Store into Rules and Regulations
-            if (len(RRmatches)>0 or (section=="Rules and Regulations")):
+            elif (len(RRmatches)>0 or (section=="Rules and Regulations")):
                 randRFound=True
                 prFound=False
                 noticeFound=False
@@ -111,27 +111,40 @@ def additionalSections(file_path, sectionDict):
             elif prFound:
                 sectionDict['Proposed Rules']=sectionDict['Proposed Rules']+line         
 
+
 #find each entry within every section of a file
 def find_each_file(sectionDict, date):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*i{1,2}\s*[f,l]{1,2}\s*e{1,2}\s*d{1,2}\s*.+[apfu][mn])"
+    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
     #for every section, and related text found in the dictionary
     for key, value in sectionDict.items():
+        last=0
         #split every line and store into list
         lines_list = value.split("\n")
-        for line in lines_list:
+        findLast=True
+        for j in range(len(lines_list)):
+            if findLast:
+                match=re.search(pattern, lines_list[len(lines_list)-1-j], re.IGNORECASE)
+                if match:
+                    last=len(lines_list)-j
+                    findLast=False
+        i=0
+        while i<(len(lines_list)-1):
+            line=lines_list[i]
+            i=i+1
             #find if line contains FR Doc pattern
             match=re.search(pattern, line, re.IGNORECASE)
             #if it contains FR Doc pattern
             if match:
                 #add the FR Doc Number as the number of the last entry as an indentifier  
                 fileList[-1][0]=match.group(0)
+                fileList[-1][1]=fileList[-1][1]+"\n"+line+"\n"+lines_list[i]
                 #append a new entry 
-                fileList.append(['',"", "",date])
+                fileList.append(['',"", "",date])                            
             #if not the first entry in the list
-            elif (len(fileList)>0):
+            elif (len(fileList)>0) and (i<last):
                 #if not the first line to be added as the text of the entry
                 if fileList[-1][1]!= '':
                     #append line to the end of the entry with a new line character
@@ -148,7 +161,7 @@ def find_each_file(sectionDict, date):
 #Find numbers at the beginning of CFR statements
 def findNumber(file):
     #CFR Part ## pattern
-    CFR=r"(C\s{0,3}F\s{0,3}R\s{0,3}[.,\s]*\s{0,3}P\s{0,3}a\s{0,3}r\s{0,3}t\s{0,3}\d{1,5})"
+    CFR=r"(\s*C\s{0,3}F\s{0,3}R\s{0,3}[.,\s]*\s{0,3}P\s{0,3}a\s{0,3}r\s{0,3}t\s{0,3}(s)?\s*\d{1,5})"
     #MakeSure its the right number
     dontRead=easierRegEx(r"List of subjects in")
     #Generate list of lines from text
@@ -156,7 +169,7 @@ def findNumber(file):
     #ensure pattern gets number before CFR
     pattern=r"^(.*?)"+CFR
     #intialize number
-    number=0
+    number="0"
     #fot every line in the list of lines
     for index, line in enumerate(linesList):
         #go through first 15 lines of the file
@@ -167,28 +180,27 @@ def findNumber(file):
             #if match found on the line
             if (match and not dontReadMatch):
                 #get number
-                number=match.group(1)   
+                number=match.group(1)
+                number=number.strip()
                 #return 0 if number too big
-                if (len(str(number))>4):
-                    number=0
+                if (len(number)>4):
+                    number="0"
     return number
 
 #check if number from the last file entry is the number before CFR for current file        
-def CFRDetection(file, number,ind, depAg, fileList):
+def CFRDetection(lines_list, number,ind, depAg, fileList):
     #pattern for what CFR not to read
     dontRead=easierRegEx("List of subjects in")
     #make sure number only has digits
-    number=re.sub(r'\D', '', number)
+    cleaned_text = re.sub(r'\D', '', number)
     #make number into a raw string
     raw_s = r'{}'.format(number)
-    #generate list of lines
-    linesList=file[1].split("\n")
     #pattern for number CFR Part ## 
-    pattern=raw_s+r"(\s*C\s{0,3}F\s{0,3}R\s{0,3}[.,\s]*\s{0,3}P\s{0,3}a\s{0,3}r\s{0,3}t\s{0,3}\d{1,5})"
+    pattern=raw_s+r"(\s*C\s{0,3}F\s{0,3}R\s{0,3}[.,\s]*\s{0,3}P\s{0,3}a\s{0,3}r\s{0,3}t\s{0,3}(s)?\s*\d{1,5})"
     #initialize variables for whether the dep/agency has been found as well as the line counter
     Found=False
     #for every line in the file
-    for index, line in enumerate(linesList):
+    for index, line in enumerate(lines_list):
             #search only the first 20 lines
             if index <= 20:
             #as long a match hasn't been found yet, keep searching
@@ -199,9 +211,40 @@ def CFRDetection(file, number,ind, depAg, fileList):
                     #if found, stop loop and store as the dep/agency for the entry
                     if (match and not dontReadMatch):
                         Found=True
-                        file.append(fileList[ind-1][depAg])  
+                        fileList[ind].append(fileList[ind-1][depAg])  
     return Found  
-                    
+                  
+def findPreviousBillingCode(file):
+    pattern=r"([BS8]\s{0,3}i\s{0,3}l\s{0,3}((l\s{0,3}i)|(U))\s{0,3}n\s{0,3}g\s{0,3}[.,\s]*\s{0,3}C\s{0,3}o\s{0,3}d\s{0,3}e\s{0,3})+((\d{1,4}\s{0,3}){1,4})"
+    #Generate list of lines from text
+    linesList=file[1].split("\n")
+    #initialize billing code    
+    billingCode=""
+    #for every line in the list of lines
+    for index, line in enumerate(linesList):
+        #search for both
+        match=re.search(pattern, line, re.IGNORECASE)
+        #if match found on the line
+        if (match):
+            #get billing code
+            number=(match.group(5)).replace(" ", "")
+            number=easierRegEx(number)
+            billingCode=r"([BS8]\s{0,3}i\s{0,3}l\s{0,3}((l\s{0,3}i)|(U))\s{0,3}n\s{0,3}g\s{0,3}[.,\s]*\s{0,3}C\s{0,3}o\s{0,3}d\s{0,3}e\s{0,3})"+number
+    return billingCode
+
+def billingCodeDetection(linesList, previousCode,fileIndex, dep_ag, fileList):
+    pattern=(previousCode)
+    found=False
+    for index, line in enumerate(linesList):
+        if ((len(linesList)-15)<index):
+            match=re.search(pattern, line, re.IGNORECASE)
+            if match:
+                found=True
+                print(fileIndex)
+                fileList[fileIndex].append(fileList[fileIndex-1][dep_ag])
+    return found
+            
+    
         
 #find either department or agency being searched for and store into dataframe     
 def find_dep_agency(file, lines_list, names_list, dep_ag, fileList, fileIndex):
@@ -243,11 +286,17 @@ def find_dep_agency(file, lines_list, names_list, dep_ag, fileList, fileIndex):
                                         file.append(name)
     #If either department of agency is not found
     if not Found:
-        #find the CFR number for last file and return 
-        number=findNumber(fileList[fileIndex-1])
-        #If the number is not 0, try to find CFR
-        if (number!=0):
-            Found=CFRDetection(file, number,fileIndex, dep_ag, fileList)
+        if ((fileList[fileIndex][2]=="Rules and Regulations")or(fileList[fileIndex][2]=="Proposed Rules")):
+            #find the CFR number for last file and return 
+            number=findNumber(fileList[fileIndex-1])
+            #If the number is not 0, try to find CFR
+            if (number!="0"):
+                Found=CFRDetection(lines_list, number,fileIndex, dep_ag, fileList)
+        else:
+            previousCode=findPreviousBillingCode(fileList[fileIndex-1])
+            if (previousCode!=""):
+                Found=billingCodeDetection(lines_list, previousCode,fileIndex, dep_ag, fileList)            
+
     #if still not found, dep/ag was not found
     if not Found:
         file.append("Not Found")
@@ -276,6 +325,7 @@ def find_department(fileList):
         
         #find agency for the entry
         find_dep_agency(file, lines_list, agency_names_list, 5, fileList, index)
+
         
             
 #take every word in the string being searched for, add a [.,\s]* after
@@ -304,20 +354,18 @@ def cleanUpList(fileList):
             file[4]='Not Found'
     fileList.pop()
 
+
 #store collected data into dataframes
 def makeDataframe(fileList):
     # Column names for the DataFrame
-    columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency' ]
+    columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency' , 'New', "new"]
 
-    # Creating the DataFrame
     df = pd.DataFrame(fileList, columns=columns)
-    
     #create data frame without text
     csvDf=df.drop('Text', axis=1)
     print(df)
-    
     #find all emtpy files
-    empty=df.loc[(df['Department'] == "Not Found") | (df['Agency'] == "Not Found")]
+    empty=csvDf.loc[(df['Department'] == "Not Found") & (df['Agency'] == "Not Found")]
     #output directory
     directory = './output'
     #fileName for both files
@@ -335,7 +383,6 @@ def makeDataframe(fileList):
     csvDf.to_csv(file_path,index=True)
     df.to_csv(file_pathTEXt,index=True)
     empty.to_csv(file_pathEmpty, index=True)
-    
     return df
         
 def main():
@@ -351,6 +398,9 @@ def main():
         date=os.path.basename(file_path).split('.txt')[0]
         #find sections
         additionalSections(file_path, sectionDict)
+        # for key, value in sectionDict.items():
+        #     with open(key+".txt", 'w', encoding='utf-8') as file:
+        #         file.write(value)
         #find each entry
         fileList=find_each_file(sectionDict, date)
         #find department and/or agency
