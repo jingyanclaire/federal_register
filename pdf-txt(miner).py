@@ -4,24 +4,22 @@ import io
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
-from pdfminer.layout import LAParams
-import pdfplumber
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTTextContainer, LAParams, LTTextBox, LTTextLine
 from retrying import retry
-# regular expression for the last entry of each departments
+
 # RE = r'\s*F\s*e\s*d\s*e\s*r\s*a\s*l\s*R\s*e\s*g\s*i\s*s\s*t\s*e\s*r\s*/\s*V\s*o\s*l\s*'
 RE = r'\s*F\s*[éèêëeE]\s*d\s*[éèêëeE]\s*r\s*a\s*l\s*R\s*[éèêëeE]\s*g\s*[LIil1íìîï]\s*s\s*t\s*[éèêëeE]\s*r\s*/\s*V\s*[Oo0óòôöõøœ]\s*[LIil1íìîï]\s*'
 
-# check if the website reponsed
+
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
 def fetch_response(url):
     response = requests.get(url)
-    # check the valid of website
     if response.status_code == 200 and len(response.content) > 1000:
         return response
     else:
         response.raise_for_status()
 
-# fix the vowels in the last entry
 def fix_vowels_line(line):
     replacements = {
         'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a', 'æ': 'a',
@@ -32,7 +30,6 @@ def fix_vowels_line(line):
         'ÿ': 'y', 'ý': 'y',
         'œ': 'o', 'ñ': 'n', 'ç': 'c'
     }
-    # replace the vowels
     for old, new in replacements.items():
         line = line.replace(old, new)
     if re.match(RE, line):
@@ -40,32 +37,74 @@ def fix_vowels_line(line):
 
     return line
 
-# extract text from pdf file
-def get_txt(date, pdf_file, folder_path, word_margin=0.5):
-    print(f"Extracting text from PDF for date: {date}")
-    # set the word margin
-    laparams = LAParams(word_margin=word_margin)
-    with pdfplumber.open(pdf_file) as pdf:
-        lines = []
-        for page in pdf.pages:
-            text = page.extract_text(laparams=laparams)
-            for line in text.split('\n'):
-                if re.match(RE, line):
-                    line = fix_vowels_line(line)
-                lines.append(line)
 
-    # write the text
+def get_column_bounds(page_layout, header_end_y):
+    words = []
+    for obj in page_layout:
+        if isinstance(obj, LTTextContainer):
+            for line in obj:
+                if isinstance(line, (LTTextBox, LTTextLine)):
+                    start_x = line.x0
+                    end_x = line.x1
+                    words.append({
+                        'x0': start_x,
+                        'x1': end_x
+                    })
+
+    words = sorted(words, key=lambda word: word['x0'])
+
+    bounds = [0]
+    for i, word in enumerate(words[:-1]):
+        current_word = words[i]
+        next_word = words[i + 1]
+        if next_word['x0'] - current_word['x1'] > 50:
+            bounds.append((current_word['x1'] + next_word['x0']) / 2)
+
+    bounds.append(page_layout.width)
+
+    # Ensure all boundaries are within the page boundaries
+    bounds = [max(0, b) for b in bounds]
+    bounds = [min(page_layout.width, b) for b in bounds]
+
+    return bounds
+
+def get_txt(date, pdf_file, folder_path):
+    print(f"Extracting text from PDF for date: {date}")
+
+    laparams = LAParams()
+
+    lines = []
+    for page_layout in extract_pages(pdf_file, laparams=laparams):
+        # 获取页眉的位置
+        matching_words = [obj for obj in page_layout if isinstance(obj, LTTextContainer) and re.match(RE, obj.get_text())]
+        header_end_y = max([word.bbox[3] for word in matching_words]) if matching_words else 0
+
+        # 处理多列
+        bounds = get_column_bounds(page_layout, header_end_y)
+        for i in range(len(bounds) - 1):
+            left, right = bounds[i], bounds[i + 1]
+            # 提取段落
+            for obj in page_layout:
+                if isinstance(obj, LTTextContainer):
+                    x, y, x1, y1 = obj.bbox
+                    if left < x1 and right > x:
+                        for line in obj.get_text().split('\n'):
+                            if re.match(RE, line):
+                                line = fix_vowels_line(line)
+                            lines.append(line)
+
     with open(f'{folder_path}/{date}.txt', 'w', encoding='utf-8') as file:
         file.write('\n'.join(lines))
 
-# make the folder to store the files
+
 def make_folder(year, month, date, pdf_file):
     folder_path = f"D:\\pycharm\\pythonProject\\pdf-txt\\FR(miner)\\FR-{year}\\{month}"
+    # folder_path = f"D:\\pycharm\\pythonProject\\pdf-txt\\FR-{year}\\{month}"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     get_txt(date, pdf_file, folder_path)
 
-# accessing the website by date
+
 def process_date(year, month, day):
     global response
     if day < 10:
@@ -80,29 +119,25 @@ def process_date(year, month, day):
     date = f"{year}-{month_str}-{day_str}"
     url = f"https://www.govinfo.gov/content/pkg/FR-{date}/pdf/FR-{date}.pdf"
     print(f"Downloading file for date: {date}")
-    # check the valid of response
     try:
         response = fetch_response(url)
         pdf_file = io.BytesIO(response.content)
         make_folder(year, month_str, date, pdf_file)
-        pdf_file.close()
     except requests.exceptions.RequestException as e:
         print(f"Failed to get response for the date {date}, error: {e}")
     finally:
         response.close()
         time.sleep(1)
 
-# check if the text is empty
+
 def is_empty(text):
     return len(text.strip()) == 0
 
-# redownload the empty files
+
 def check_and_redownload_empty_files(folder_path):
     redownloaded_files = []
     redownload_needed = False
-    # loop for the folder path
     for root, ds, fs in os.walk(folder_path):
-        # loop for the folder
         for file_name in fs:
             if file_name.endswith('.txt'):
                 with open(os.path.join(root, file_name), 'r', encoding='utf-8') as file:
@@ -123,10 +158,10 @@ def check_and_redownload_empty_files(folder_path):
 
 
 def main():
+
     try:
-        for year in range(1986, 1992):
+        for year in range(1969, 1980):
             for month in range(1, 13):
-                # set thread pool's max size as 3
                 with ThreadPoolExecutor(max_workers=3) as executor:
                     days_in_month = 31
                     if month == 2:
@@ -138,7 +173,6 @@ def main():
                         days_in_month = 30
                     executor.map(process_date, [year] * days_in_month, [month] * days_in_month,
                                  range(1, days_in_month + 1))
-                    # check 3 times
                     for _ in range(3):
                         redownload_needed = check_and_redownload_empty_files(
                             f"D:\\pycharm\\pythonProject\\pdf-txt\\FR(miner)\\FR-{year}\\{str(month).zfill(2)}")
