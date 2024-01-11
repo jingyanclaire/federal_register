@@ -14,3 +14,5 @@ pdf-txt's file:
 "pdf-txt(pypdf2).py" is used to transfer pdf file to the txt file, which use the pypdf2 package. The txt file between 2000-2023 in oneDrive should be used this package.
 
 "pdf-txt(pymupdf).py" is usdd to transfer pdf file to the txt file, which use the pymupdf package. None txt file use this one but it's the fastest package to transfer, only can be used after 2000 years
+
+"minerWithHorizontal.py" is the final version and use 0.9 word margin
