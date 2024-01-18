@@ -1,0 +1,171 @@
+import re
+import glob
+import pandas as pd
+import os
+import concurrent.futures
+
+#take every word in the string being searched for, add a [.,\s]* after
+#after every letter add a \s{0,3}
+def easierRegEx(string):
+    LetterSeparator=''
+    regexDep=""
+    #for each letter in the string, add a \s{0,3}
+    #allows for zero-three spaces between the letters to account for encoding errors with spacing
+    for letter in string:
+        if(letter!=''):
+            LetterSeparator=LetterSeparator+letter+'\s{0,3}'
+    #for each word in the string, add a [.,\s]*
+    #allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
+    departmentWords = LetterSeparator.split()
+    for word in departmentWords:
+           regexDep=regexDep+word+'[.,\s]*'
+    return regexDep
+
+#find each entry within every section of a file
+def find_each_file(file_path, date):
+    #intialize list to store lists for every entry 
+    fileList=[]
+    #regex pattern for FR Doc. followed by four digits
+    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
+    linesList=[]
+    #readlines from the the file into a list
+    with open(file_path, 'r', encoding='utf-8') as file:
+            linesList=file.readlines()
+    last=0
+    #find the last FR doc and remove everything after
+    findLast=True
+    for j in range(len(linesList)):
+        if findLast:
+            match=re.search(pattern, linesList[len(linesList)-1-j], re.IGNORECASE)
+            if match:
+                last=len(linesList)-j
+                findLast=False
+    #set i to 1000 as first 1000-4000 lines are typically the table of contents
+    i=1000
+    #search through every line
+    while i<(len(linesList)-1):
+        line=linesList[i]
+        i=i+1
+        #find if line contains FR Doc pattern
+        match=re.search(pattern, line, re.IGNORECASE)
+        #if it contains FR Doc pattern
+        if match:
+            #add the FR Doc Number as the number of the last entry as an indentifier  
+            fileList[-1][0]=match.group(1)
+            fileList[-1][1]=fileList[-1][1]+"\n"+line+"\n"+linesList[i]
+            #append a new entry 
+            fileList.append(['',"", "",date, "", ""])                            
+        #if not the first entry in the list
+        elif (len(fileList)>0) and (i<last):
+            #if not the first line to be added as the text of the entry
+            if fileList[-1][1]!= '':
+                #append line to the end of the entry with a new line character
+                fileList[-1][1]=fileList[-1][1]+"\n"+line
+                #append key of the entry
+            else:
+                fileList[-1][1]=fileList[-1][1]+line
+        #if first entry being analyzed, put placeholder for FR Doc number and append info
+        elif (len(fileList)==0):
+            fileList.append(["First Entry", line, "", date, "", ""])
+    return fileList     
+
+#find all of headers that show what section the page is on
+def findSectionHeaders(file):
+    sectionFound=False
+    #patterns for each section's headers
+    NoticePattern = "^"+easierRegEx("Notices")+"$"
+    PRPattern = "^"+easierRegEx("PROPOSED RULE MAKING")+"$"
+    randRPattern = "^"+easierRegEx("Rules and Regulations")+"$"
+    #search through everyone line to find what section the file is in
+    linesList=file[1].split('\n')
+    for line in linesList:
+        if not (sectionFound):
+            #Find which section it most likely is
+            RRHeadermatch=re.search(randRPattern, line, re.IGNORECASE)
+            PRHeaderMatch=re.search(PRPattern, line, re.IGNORECASE)
+            noticeHeaderMatch=re.search(NoticePattern, line, re.IGNORECASE)
+            #store into right section and return back to loop
+            if(RRHeadermatch):
+                sectionFound=True
+                section= 'Rules and Regulations'
+            elif (PRHeaderMatch):
+                sectionFound=True
+                section= "Proposed Rules"
+            elif(noticeHeaderMatch):
+                sectionFound=True
+                section="Notices"
+            else:
+                section="NOPE"
+    return section
+
+#Rules and Regulations is the only section that has the chapter or subchapter typically mentioned
+#use this fact to make additions where not initially found
+def findRulesAndRegulations(file):
+    if file[2]==("NOPE"):
+        # matches Chapter (roman numeral)
+        randRPattern = easierRegEx("CHAPTER")+"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})— "
+        randRPattern2=easierRegEx("SUBCHAPTER")
+        linesList=file[1].split('\n')
+        for line in linesList:
+            RRHeadermatch=re.search(randRPattern, line, re.IGNORECASE)
+            RRHeadermatch2=re.search(randRPattern2, line, re.IGNORECASE)
+            if RRHeadermatch or RRHeadermatch2:
+                file[2]="Rules and Regulations"
+
+#store collected data into dataframes
+def makeDataframe(fileList):
+    # Column names for the DataFrame
+    columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency']
+
+    df = pd.DataFrame(fileList, columns=columns)
+    #create data frame without text
+    csvDf=df.drop('Text', axis=1)
+    print(df)
+    #find all emtpy files
+    empty=csvDf.loc[(df['Department'] == "Not Found") & (df['Agency'] == "Not Found")]
+    #output directory
+    directory = './output'
+    #fileName for both files
+    filename = str(csvDf.iloc[0]['Date'])+'.csv'
+    textFileName=str(csvDf.iloc[0]['Date'])+'text'+'.csv'
+    emptyFileName=(csvDf.iloc[0]['Date'])+'empty'+'.csv'
+    #path to write output files
+    file_path = os.path.join(directory, filename)
+    file_pathTEXt=os.path.join(directory, textFileName)
+    file_pathEmpty=os.path.join(directory, emptyFileName)
+    #create folder if not present
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    #write dataframes to csv files
+    csvDf.to_csv(file_path,index=True)
+    df.to_csv(file_pathTEXt,index=True)
+    empty.to_csv(file_pathEmpty, index=True)
+    return df
+
+def makeReplacements(fileList):
+    for index, file in enumerate(fileList):  
+        notFound=True  
+        if (file[2]=='NOPE') and index!=(len(fileList)-1):
+            i=0
+            while i<5:
+                i+=1
+                if notFound:
+                    goingDown=fileList[index+i][2]
+                    print("DOWN"+goingDown)
+                    j=0
+                    while j<5:
+                        j+=1
+                        if notFound:
+                            goingUp=fileList[index-i][2]
+                            print("UP"+goingUp)
+                            if goingDown==goingUp:
+                                file[2]=goingUp
+                                notFound=False
+        
+fileList=find_each_file(r"C:\Users\vishp\Desktop\Python\FDR\Extracting_info\Dates\1971-12-29(0.9).txt","01-09-2004")
+for file in fileList:
+    file[2]=findSectionHeaders(file)
+    findRulesAndRegulations(file)
+makeReplacements(fileList)
+df=makeDataframe(fileList)
+
