@@ -4,29 +4,55 @@ import pandas as pd
 import os
 import concurrent.futures
 
-#take every word in the string being searched for, add a [.,\s]* after
-#after every letter add a \s{0,3}
 def easierRegEx(string):
-    LetterSeparator=''
-    regexDep=""
-    #for each letter in the string, add a \s{0,3}
-    #allows for zero-three spaces between the letters to account for encoding errors with spacing
+    LetterSeparator = ''
+    regexDep = ""
+    # for each letter in the string, add a \s{0,3}
+    # allows for zero-three spaces between the letters to account for encoding errors with spacing
     for letter in string:
-        if(letter!=''):
-            LetterSeparator=LetterSeparator+letter+'\s{0,3}'
-    #for each word in the string, add a [.,\s]*
-    #allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
+        if (letter != ''):
+            LetterSeparator = LetterSeparator + letter + '\s{0,3}'+'[\xAD\-.,]{0,3}'
+    # for each word in the string, add a [.,\s]*
+    # allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
     departmentWords = LetterSeparator.split()
     for word in departmentWords:
-           regexDep=regexDep+word+'[.,\s]*'
+        regexDep = regexDep + word + '[\xAD\-.,\s]*'
     return regexDep
+
+def findStart(linesList):
+    #regex pattern for FR Doc. followed by four digits
+    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
+    i=0
+    while i<(len(linesList)-1):
+        line=linesList[i]
+        i=i+1
+        #find if line contains FR Doc pattern
+        match=re.search(pattern, line, re.IGNORECASE)
+        #if it contains FR Doc pattern
+        if match:
+            j=i-1
+    start=False
+    while not (start) and not j<0:
+        line=linesList[j]
+        randRPattern = "(^"+easierRegEx("rules and regulations")+"$)|(^"+easierRegEx("Rules and Regulations")+"$)"
+        randRPattern2=easierRegEx("general applicability and legal effect")
+        randRPattern3=easierRegEx("contains regulatory documents")
+        #Find which section it most likely is
+        RRHeadermatch=re.search(randRPattern, line)
+        RRHeadermatch2=re.search(randRPattern2, line)
+        RRHeadermatch3=re.search(randRPattern3, line)
+        if(RRHeadermatch) or (RRHeadermatch2) or (RRHeadermatch3):
+            return j
+        else:
+            j=j-1
+    return 0
 
 #find each entry within every section of a file
 def find_each_file(file_path, date):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
+    pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
     linesList=[]
     #readlines from the the file into a list
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -40,8 +66,7 @@ def find_each_file(file_path, date):
             if match:
                 last=len(linesList)-j
                 findLast=False
-    #set i to 1000 as first 1000-4000 lines are typically the table of contents
-    i=1000
+    i=findStart(linesList)
     #search through every line
     while i<(len(linesList)-1):
         line=linesList[i]
@@ -66,16 +91,19 @@ def find_each_file(file_path, date):
                 fileList[-1][1]=fileList[-1][1]+line
         #if first entry being analyzed, put placeholder for FR Doc number and append info
         elif (len(fileList)==0):
-            fileList.append(["First Entry", line, "", date, "", ""])
+            fileList.append(["First Entry", line, "Rules and Regulations", date, "", ""])
     return fileList     
 
 #find all of headers that show what section the page is on
 def findSectionHeaders(file):
     sectionFound=False
     #patterns for each section's headers
-    NoticePattern = "^"+easierRegEx("NOTICES")+"$"
-    PRPattern = "^"+easierRegEx("PROPOSED RULES")+"$"
-    randRPattern = "^"+easierRegEx("RULES AND REGULATIONS")+"$"
+    NoticePattern = "^"+easierRegEx("NOTICES")+""
+    Notice2Pattern = "^"+easierRegEx("Notes")+""
+    PRPattern = "^"+easierRegEx("PROPOSED RULES")+""
+    PRPattern2 = "^"+easierRegEx("Proposed Rules")+""
+    randRPattern = "^"+easierRegEx("RULES AND REGULATIONS")+""
+    randRPattern2 = "^"+easierRegEx("Rules and Regulations")+""
     #search through everyone line to find what section the file is in
     linesList=file[1].split('\n')
     for line in linesList:
@@ -103,7 +131,7 @@ def findSectionHeaders(file):
 def findRulesAndRegulations(file):
     if file[2]==("NOPE"):
         # matches Chapter (roman numeral)
-        randRPattern = easierRegEx("CHAPTER")+"(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})— "
+        randRPattern = "^"+easierRegEx("CHAPTER")+"—"
         randRPattern2=easierRegEx("SUBCHAPTER")
         linesList=file[1].split('\n')
         for line in linesList:
@@ -111,6 +139,25 @@ def findRulesAndRegulations(file):
             RRHeadermatch2=re.search(randRPattern2, line, re.IGNORECASE)
             if RRHeadermatch or RRHeadermatch2:
                 file[2]="Rules and Regulations"
+                return
+                
+#Rules and Regulations is the only section that has the chapter or subchapter typically mentioned
+#use this fact to make additions where not initially found
+def findProposedRules(file):
+    if file[2]==("NOPE"):
+        # matches Chapter (roman numeral)
+        PRPattern = "^[CFR.+Part.+]$"
+        PRPattern2="proposed regulations"
+        PRPattern3="proposed rulemaking"
+        linesList=file[1].split('\n')
+        for line in linesList:
+            PRPatternMatch=re.search(PRPattern, line, re.IGNORECASE)
+            PRPattern2Match=re.search(PRPattern2, line, re.IGNORECASE)
+            PRPattern3Match=re.search(PRPattern3, line, re.IGNORECASE)
+            if PRPatternMatch or PRPattern2Match or PRPattern3Match:
+                file[2]="Proposed Rules"
+                return
+
 #read either department or agency names from a given csv
 def read_agency_names_from_csv(file_path,name):
     df = pd.read_csv(file_path)
