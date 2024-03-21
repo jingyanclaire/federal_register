@@ -2,7 +2,9 @@ import re
 import glob
 import pandas as pd
 import os
-import concurrent.futures
+
+UP=1
+DOWN=-1
 
 def easierRegEx(string):
     LetterSeparator = ''
@@ -32,7 +34,7 @@ def findStart(linesList):
         if match:
             j=i-1
     start=False
-    while not (start) and not j<0:
+    while j>=0:
         line=linesList[j]
         randRPattern = "(^"+easierRegEx("rules and regulations")+"$)|(^"+easierRegEx("Rules and Regulations")+"$)"
         randRPattern2=easierRegEx("general applicability and legal effect")
@@ -56,7 +58,7 @@ def find_each_file(file_path, date):
     linesList=[]
     #readlines from the the file into a list
     with open(file_path, 'r', encoding='utf-8') as file:
-            linesList=file.readlines()
+        linesList=file.readlines()
     last=0
     #find the last FR doc and remove everything after
     findLast=True
@@ -98,28 +100,31 @@ def find_each_file(file_path, date):
 def findSectionHeaders(file):
     sectionFound=False
     #patterns for each section's headers
-    NoticePattern = "^"+easierRegEx("NOTICES")+""
-    Notice2Pattern = "^"+easierRegEx("Notes")+""
-    PRPattern = "^"+easierRegEx("PROPOSED RULES")+""
-    PRPattern2 = "^"+easierRegEx("Proposed Rules")+""
-    randRPattern = "^"+easierRegEx("RULES AND REGULATIONS")+""
-    randRPattern2 = "^"+easierRegEx("Rules and Regulations")+""
+    NoticePattern = "^"+easierRegEx("NOTICES")
+    NoticePattern2 = "^"+easierRegEx("Notes")
+    PRPattern = "(^"+easierRegEx("PROPOSED RULES")+")|(^"+easierRegEx("PROPOSED RULE MAKIN")+")"
+    PRPattern2 = "(^"+easierRegEx("Proposed Rules")+")|(^"+easierRegEx("Proposed Rule Makin")+")"
+    randRPattern = "^"+easierRegEx("RULES AND REGULATIONS")
+    randRPattern2 = easierRegEx("Rules and Regulations")
     #search through everyone line to find what section the file is in
     linesList=file[1].split('\n')
     for line in linesList:
         if not (sectionFound):
             #Find which section it most likely is
             RRHeadermatch=re.search(randRPattern, line)
+            RRHeadermatch2=re.search(randRPattern2, line)
             PRHeaderMatch=re.search(PRPattern, line)
+            PRHeaderMatch2=re.search(PRPattern2, line)
             noticeHeaderMatch=re.search(NoticePattern, line)
+            noticeHeaderMatch2=re.search(NoticePattern2, line)
             #store into right section and return back to loop
-            if(RRHeadermatch):
+            if(RRHeadermatch or RRHeadermatch2):
                 sectionFound=True
                 section= 'Rules and Regulations'
-            elif (PRHeaderMatch):
+            elif (PRHeaderMatch or PRHeaderMatch2):
                 sectionFound=True
                 section= "Proposed Rules"
-            elif(noticeHeaderMatch):
+            elif(noticeHeaderMatch or noticeHeaderMatch2):
                 sectionFound=True
                 section="Notices"
             else:
@@ -131,7 +136,8 @@ def findSectionHeaders(file):
 def findRulesAndRegulations(file):
     if file[2]==("NOPE"):
         # matches Chapter (roman numeral)
-        randRPattern = "^"+easierRegEx("CHAPTER")+"—"
+        randRPattern3=easierRegEx("Title")+"\d{1,2}"
+        randRPattern = "^"+easierRegEx("CHAPTER")+
         randRPattern2=easierRegEx("SUBCHAPTER")
         linesList=file[1].split('\n')
         for line in linesList:
@@ -146,9 +152,9 @@ def findRulesAndRegulations(file):
 def findProposedRules(file):
     if file[2]==("NOPE"):
         # matches Chapter (roman numeral)
-        PRPattern = "^[CFR.+Part.+]$"
-        PRPattern2="proposed regulations"
-        PRPattern3="proposed rulemaking"
+        PRPattern = "^["+easierRegEx("CFR")+".*"+easierRegEx("Part")+"\d{1,2}"
+        PRPattern2=easierRegEx("proposed regulations")
+        PRPattern3=easierRegEx("Notice of Proposed Rule Making")
         linesList=file[1].split('\n')
         for line in linesList:
             PRPatternMatch=re.search(PRPattern, line, re.IGNORECASE)
@@ -163,48 +169,62 @@ def read_agency_names_from_csv(file_path,name):
     df = pd.read_csv(file_path)
     return df[name].tolist() 
 
-#find either department or agency being searched for and store into dataframe     
-def find_dep_agency(file, lines_list, names_list, dep_ag, fileList, fileIndex):
-    #initialize variables for whether the dep/agency has been found as well as the line counter
-    Found=False
-    lineLimit=30
-    #for every line and index within the lines list
-    for index, line in enumerate(lines_list):
-        #search only the first 20 lines
-        if index <= lineLimit:
-            if len(line)<3:
-                lineLimit=lineLimit+1
-            #for every name of dep/agency within the csv 
-            for name in names_list:
-                #create a easier to find regex statement
-                name=name[:43]
-                regExDep=easierRegEx(name)
-                #as long a match hasn't been found yet, keep searching
-                if not Found:
+def searchAg(lines_list, names_list, line,file, dep_ag,i,upOrDown, Found):
+    #for every name of dep/agency within the csv 
+    for name in names_list:
+        #create a easier to find regex statement
+        name=name[:43]
+        regExDep=easierRegEx(name)
+        #as long a match hasn't been found yet, keep searching
+        if not Found:
+            #use regEx to search within the line
+            match=re.search(regExDep, line, re.IGNORECASE)
+            #if found, stop loop and store as the dep/agency for the entry
+            if match:
+                Found=True
+                if (match.group().isupper()):
+                    file[dep_ag]=(name.upper())
+                else:
+                    file[dep_ag]=name
+            #if not found
+            else:
+                #if not on the last line of the entry
+                if (i+1)<(len(lines_list)-1):
+                    #combine former line and line after into a new line
+                    newLine=line+lines_list[i+1]
                     #use regEx to search within the line
-                    match=re.search(regExDep, line, re.IGNORECASE)
+                    newMatch=re.search(regExDep, newLine, re.IGNORECASE)
                     #if found, stop loop and store as the dep/agency for the entry
-                    if match:
+                    if newMatch:
                         Found=True
-                        if (match.group().isupper()):
+                        if (newMatch.group().isupper()):
                             file[dep_ag]=(name.upper())
                         else:
                             file[dep_ag]=name
-                    #if not found
-                    else:
-                        #if not on the last line of the entry
-                        if (index+1)<(len(lines_list)-1):
-                            #combine former line and line after into a new line
-                            newLine=line+lines_list[index+1]
-                            #use regEx to search within the line
-                            newMatch=re.search(regExDep, newLine, re.IGNORECASE)
-                            #if found, stop loop and store as the dep/agency for the entry
-                            if newMatch:
-                                Found=True
-                                if (newMatch.group().isupper()):
-                                    file[dep_ag]=(name.upper())
-                                else:
-                                    file[dep_ag]=name        
+    return Found                        
+    
+
+#find either department or agency being searched for and store into dataframe     
+def find_dep_agency(file, lines_list, names_list, dep_ag, fileList, fileIndex):
+    Found=False
+    #initialize variables for whether the dep/agency has been found as well as the line counter
+    lineLimit=30
+    i=0
+    while i<lineLimit and i<len(lines_list):
+        line=lines_list[i]
+        # print(line.encode())
+        if len(line)<3:
+            lineLimit+=1
+        else:
+            Found=searchAg(lines_list, names_list, line,file, dep_ag,i,UP, Found)
+        i+=1
+    lineLimit=15
+    i=0
+    if not Found:
+        while i<lineLimit:
+            line=lines_list[len(lines_list)-1]
+            Found=searchAg(lines_list, names_list, line,file, dep_ag,i,DOWN,Found)
+            i+=1
     #if still not found, dep/ag was not found
     if not Found:
         file[dep_ag]="Not Found"
@@ -261,21 +281,21 @@ def makeDataframe(fileList):
 
 def makeReplacements(fileList):
     for index, file in enumerate(fileList):  
-        notFound=True  
-        if (file[2]=='NOPE') and index<(len(fileList)):
-            i=0
-            while i<5:
-                i+=1
-                if notFound and index+i<(len(fileList)):
+        found=False
+        if(index==(len(fileList)-1)):
+            file[2]="Notices"
+        elif(index==(0)):
+            file[2]="Rules and Regulations"
+        if (file[2]=='NOPE'):
+            for i in range(1,5):
+                if not found and index+i<(len(fileList)):
                     goingDown=fileList[index+i][2]
-                    j=0
-                    while j<5:
-                        j+=1
-                        if notFound  and index-i<(len(fileList)):
+                    for j in range(1,5):
+                        if not found and index-i<(len(fileList)):
                             goingUp=fileList[index-i][2]
-                            if goingDown==goingUp:
+                            if goingDown==goingUp and (goingDown!="NOPE"):
                                 file[2]=goingUp
-                                notFound=False
+                                found=False
         
 
 def analyze_file(filePath):
