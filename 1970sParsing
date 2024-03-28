@@ -288,15 +288,12 @@ def makeReplacements(fileList):
             file[2]="Rules and Regulations"
         if (file[2]=='NOPE'):
             for i in range(1,5):
-                if not found and index+i<(len(fileList)):
-                    goingDown=fileList[index+i][2]
+                if (index+i<len(fileList)):
                     for j in range(1,5):
-                        if not found and index-i<(len(fileList)):
-                            goingUp=fileList[index-i][2]
-                            if goingDown==goingUp and (goingDown!="NOPE"):
-                                file[2]=goingUp
-                                found=False
-        
+                        if (index-j)>0:
+                            if (fileList[index+i][2]==fileList[index-j][2]) and (fileList[index+i][2]!="NOPE") and not found:
+                                file[2]=fileList[index+i][2]
+                                found=True
 
 def analyze_file(filePath):
     #find date using the text file's name
