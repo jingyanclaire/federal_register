@@ -1,0 +1,347 @@
+import re
+import glob
+import pandas as pd
+import os
+
+UP=1
+DOWN=-1
+
+def easierRegEx(string):
+    LetterSeparator = ''
+    regexDep = ""
+    # for each letter in the string, add a \s{0,3}
+    # allows for zero-three spaces between the letters to account for encoding errors with spacing
+    for letter in string:
+        if (letter != ''):
+            LetterSeparator = LetterSeparator + letter + '\s{0,3}'+'[\xAD\-.,]{0,3}'
+    # for each word in the string, add a [.,\s]*
+    # allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
+    departmentWords = LetterSeparator.split()
+    for word in departmentWords:
+        regexDep = regexDep + word + '[\xAD\-.,\s]*'
+    return regexDep
+
+def skipContents(linesList, i):
+    contentpattern=easierRegEx('Contents')
+    fedregstartpattern=easierRegEx('Published daily, except Sundays, Mondays,and days')
+    hyphenpattern=r"-{3,20}"
+    dashespattern=r'_{3,20}'
+    lineIndex=0
+    SinceLast=20
+    j=i
+    while j<(len(linesList)):
+        line=linesList[j]
+        contentmatch=re.search(contentpattern, line)
+        fedregstartmatch=re.search(fedregstartpattern, line, re.IGNORECASE)
+        hyphenmatch=re.search(hyphenpattern, line)
+        dashesmatch=re.search(dashespattern,line)
+        if not (SinceLast==0):    
+            if contentmatch or fedregstartmatch or hyphenmatch or dashesmatch:
+                lineIndex=j
+                SinceLast=20
+            else:
+                SinceLast-=1
+        j+=1
+    return lineIndex
+            
+def findLast(linesList):
+    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    last=0
+    #find the last FR doc and remove everything after
+    findLast=True
+    for j in range(len(linesList)):
+        if findLast:
+            match=re.search(pattern, linesList[len(linesList)-1-j], re.IGNORECASE)
+            if match:
+                last=len(linesList)-j
+                findLast=False
+    return last
+                
+#find each entry within every section of a file
+def find_each_file(linesList, date, last):
+    #intialize list to store lists for every entry 
+    fileList=[]
+    #regex pattern for FR Doc. followed by four digits
+    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    contentsPatterns=easierRegEx('CONTENTS')
+    
+    i=0
+    #search through every line
+    while i<(len(linesList)-1):
+        line=linesList[i]
+        i=i+1
+        #find if line contains FR Doc pattern
+        match=re.search(pattern, line, re.IGNORECASE)
+        contentPatternMatch=re.search(contentsPatterns, line)
+        if contentPatternMatch:
+            i=skipContents(linesList, i)
+        #if it contains FR Doc pattern
+        elif match:
+            #add the FR Doc Number as the number of the last entry as an indentifier  
+            fileList[-1][0]=match.group(1)
+            fileList[-1][1]=fileList[-1][1]+line
+            #append a new entry 
+            fileList.append(['',"", "",date, "", ""])                            
+        #if not the first entry in the list
+        elif (len(fileList)>0) and (i<last):
+            #if not the first line to be added as the text of the entry
+            if fileList[-1][1]!= '':
+                #append line to the end of the entry with a new line character
+                fileList[-1][1]=fileList[-1][1]+line
+                #append key of the entry
+            else:
+                fileList[-1][1]=fileList[-1][1]+line
+        #if first entry being analyzed, put placeholder for FR Doc number and append info
+        elif (len(fileList)==0):
+            fileList.append(["First Entry", line, "Rules and Regulations", date, "", ""])
+    return fileList     
+
+#find all of headers that show what section the page is on
+def findSectionHeaders(file):
+    sectionFound=False
+    #patterns for each section's headers
+    NoticePattern = easierRegEx("NOTICES")
+    NoticePattern2 = easierRegEx("Notes")
+    PRPattern = easierRegEx("PROPOSED RULE MAKIN")
+    PRPattern2 = easierRegEx("Proposed Rule Makin")
+    randRPattern = easierRegEx("RULES AND REGULATIONS")
+    randRPattern2 = easierRegEx("Rules and Regulations")
+    #search through everyone line to find what section the file is in
+    linesList=file[1].split('\n')
+    for line in linesList:
+        if not (sectionFound):
+            #Find which section it most likely is
+            RRHeadermatch=re.search(randRPattern, line)
+            RRHeadermatch2=re.search(randRPattern2, line)
+            PRHeaderMatch=re.search(PRPattern, line)
+            PRHeaderMatch2=re.search(PRPattern2, line)
+            noticeHeaderMatch=re.search(NoticePattern, line)
+            noticeHeaderMatch2=re.search(NoticePattern2, line)
+            #store into right section and return back to loop
+            if(RRHeadermatch or RRHeadermatch2):
+                sectionFound=True
+                section= 'Rules and Regulations'
+            elif (PRHeaderMatch or PRHeaderMatch2):
+                sectionFound=True
+                section= "Proposed Rules"
+            elif(noticeHeaderMatch or noticeHeaderMatch2):
+                sectionFound=True
+                section="Notices"
+            else:
+                section="NOPE"
+    return section
+
+#Rules and Regulations is the only section that has the chapter or subchapter typically mentioned
+#use this fact to make additions where not initially found
+def findRulesAndRegulations(file):
+    if file[2]==("NOPE"):
+        # matches Chapter (roman numeral)
+        randRPattern3="^"+easierRegEx("Title")+"\d{1,2}"
+        randRPattern = "^"+easierRegEx("CHAPTER")
+        randRPattern2="^"+easierRegEx("SUBCHAPTER")
+        linesList=file[1].split('\n')
+        for line in linesList:
+            RRHeadermatch=re.search(randRPattern, line, re.IGNORECASE)
+            RRHeadermatch2=re.search(randRPattern2, line, re.IGNORECASE)
+            if RRHeadermatch or RRHeadermatch2:
+                file[2]="Rules and Regulations"
+                return
+                
+#Rules and Regulations is the only section that has the chapter or subchapter typically mentioned
+#use this fact to make additions where not initially found
+def findProposedRules(file):
+    if file[2]==("NOPE"):
+        # matches Chapter (roman numeral)
+        PRPattern = "^["+easierRegEx("CFR")+".*"+easierRegEx("Part")+"\d{1,3}"
+        linesList=file[1].split('\n')
+        for line in linesList:
+            PRPatternMatch=re.search(PRPattern, line, re.IGNORECASE)
+            if PRPatternMatch:
+                file[2]="Proposed Rules"
+                return
+
+#read either department or agency names from a given csv
+def read_agency_names_from_csv(file_path,name):
+    df = pd.read_csv(file_path)
+    return df[name].tolist() 
+
+def searchAg(lines_list, names_list, line,file, dep_ag,i,upOrDown, Found):
+    #for every name of dep/agency within the csv 
+    for name in names_list:
+        #create a easier to find regex statement
+        name=name[:43]
+        regExDep=easierRegEx(name)
+        #as long a match hasn't been found yet, keep searching
+        if not Found:
+            #use regEx to search within the line
+            match=re.search(regExDep, line, re.IGNORECASE)
+            #if found, stop loop and store as the dep/agency for the entry
+            if match:
+                Found=True
+                if (match.group().isupper()):
+                    file[dep_ag]=(name.upper())
+                else:
+                    file[dep_ag]=name
+            #if not found
+            else:
+                #if not on the last line of the entry
+                if (i+1)<(len(lines_list)-1):
+                    #combine former line and line after into a new line
+                    newLine=line+lines_list[i+1]
+                    #use regEx to search within the line
+                    newMatch=re.search(regExDep, newLine, re.IGNORECASE)
+                    #if found, stop loop and store as the dep/agency for the entry
+                    if newMatch:
+                        Found=True
+                        if (newMatch.group().isupper()):
+                            file[dep_ag]=(name.upper())
+                        else:
+                            file[dep_ag]=name
+    return Found                        
+    
+
+#find either department or agency being searched for and store into dataframe     
+def find_dep_agency(file, lines_list, names_list, dep_ag):
+    Found=False
+    #initialize variables for whether the dep/agency has been found as well as the line counter
+    lineLimit=30
+    i=0
+    while i<lineLimit and i<len(lines_list):
+        line=lines_list[i]
+        # print(line.encode())
+        if len(line)<3:
+            lineLimit+=1
+        else:
+            Found=searchAg(lines_list, names_list, line,file, dep_ag,i,UP, Found)
+        i+=1
+    lineLimit=15
+    i=0
+    while i<lineLimit and (len(lines_list)-i-1)>0:
+        if not Found:
+            line=lines_list[len(lines_list)-i-1]
+            Found=searchAg(lines_list, names_list, line,file, dep_ag,i,DOWN,Found)
+        else:
+            break
+        i+=1
+    #if still not found, dep/ag was not found
+    if not Found:
+        file[dep_ag]="Not Found"
+
+#store department and agency names into pandas dataframes and start search for both
+def find_department(fileList):
+    #read each name in department csv to a list
+    department_names_list = read_agency_names_from_csv("department_names_only.csv", 'department.name')
+    
+    #read each name in the agency csv to a list
+    agency_names_list = read_agency_names_from_csv("agency_names_only.csv", 'agency.name')
+    
+    #for every entry found in the entry list
+    for file in fileList:
+        #split after each line and store each line to a list
+        text=file[1]
+        lines_list = text.split("\n")
+        
+        #find department for the entry
+        find_dep_agency(file, lines_list, department_names_list, 4)
+        
+        #find agency for the entry
+        find_dep_agency(file, lines_list, agency_names_list, 5)
+    print("exit loop ")
+        
+#store collected data into dataframes
+def makeDataframe(fileList):
+    # Column names for the DataFrame
+    columns = ['FR Doc. Number', 'Text', 'Section','Date','Department', 'Agency']
+
+    df = pd.DataFrame(fileList, columns=columns)
+    #create data frame without text
+    csvDf=df.drop('Text', axis=1)
+    print(df)
+    #find all emtpy files
+    empty=csvDf.loc[(df['Department'] == "Not Found") & (df['Agency'] == "Not Found")]
+    #output directory
+    directory = './output'
+    #fileName for both files
+    filename = str(csvDf.iloc[0]['Date'])+'.csv'
+    textFileName=str(csvDf.iloc[0]['Date'])+'text'+'.csv'
+    emptyFileName=(csvDf.iloc[0]['Date'])+'empty'+'.csv'
+    #path to write output files
+    file_path = os.path.join(directory, filename)
+    file_pathTEXt=os.path.join(directory, textFileName)
+    file_pathEmpty=os.path.join(directory, emptyFileName)
+    #create folder if not present
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    #write dataframes to csv files
+    csvDf.to_csv(file_path,index=True)
+    df.to_csv(file_pathTEXt,index=True)
+    empty.to_csv(file_pathEmpty, index=True)
+    return df
+
+def makeReplacements(fileList):
+    for index, file in enumerate(fileList):  
+        found=False
+        if(index==(len(fileList)-1)):
+            file[2]="Notices"
+        elif(index==(0)):
+            file[2]="Rules and Regulations"
+        if (file[2]=='NOPE'):
+            for i in range(1,5):
+                if (index+i<len(fileList)):
+                    for j in range(1,5):
+                        if (index-j)>0:
+                            if (fileList[index+i][2]==fileList[index-j][2]) and (fileList[index+i][2]!="NOPE") and not found:
+                                file[2]=fileList[index+i][2]
+                                found=True
+                
+def FRDocNo(FRDoc):
+    pattern=r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}.+\d{2}\s*-\s*(\d{4}))"
+    patternMatch=re.search(pattern, FRDoc)
+    num=0
+    if patternMatch:
+        num=int(patternMatch.group(2))
+    return num
+            
+def checkno(fileList, i):
+    if FRDocNo(fileList[i][0])!=0:
+        if FRDocNo(fileList[i+1][0])!=0:
+            if (FRDocNo(fileList[i+1][0])-2)<=FRDocNo(fileList[i][0])<=(FRDocNo(fileList[i+1][0])+2):
+                fileList[i][4]=fileList[i+1][4]
+                fileList[i][5]=fileList[i+1][5]
+        if FRDocNo(fileList[i-1][0])!=0:
+            if (FRDocNo(fileList[i+1][0])-2)<=FRDocNo(fileList[i][0])<=(FRDocNo(fileList[i+1][0])+2):
+                fileList[i][4]=fileList[i-1][4]
+                fileList[i][5]=fileList[i-1][5]
+    
+def replaceEmptyAgDep(fileList):
+    for index,file in enumerate(fileList):
+        if file[3]=="Not Found" or file[4]=="Not Found":
+            checkno(fileList,index)
+        
+def analyze_file(filePath):
+    #find date using the text file's name
+    date=os.path.basename(filePath).split('.txt')[0]
+    linesList=[]
+    #readlines from the the file into a list
+    with open(filePath, 'r', encoding='utf-8') as file:
+        linesList=file.readlines()
+    last=findLast(linesList)
+    fileList=find_each_file(linesList, date, last)
+    for file in fileList:
+        file[2]=findSectionHeaders(file)
+        findRulesAndRegulations(file)
+    makeReplacements(fileList)
+    find_department(fileList)
+    replaceEmptyAgDep(fileList)
+    df=makeDataframe(fileList)
+
+def main():
+     #folder containing text files that need analysis
+    folder_path = r'C:\Users\vishp\Desktop\Python\FDR\Extracting_info\Dates/*.txt'
+    #list containing every file path within the folder
+    text_files = glob.glob(folder_path)
+    for file_path in text_files:
+        analyze_file(file_path)
+
+if __name__ == "__main__":
+    main()
