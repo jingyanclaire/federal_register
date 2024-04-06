@@ -6,6 +6,9 @@ import os
 UP=1
 DOWN=-1
 
+# generates regular expression for a string by adding room for upto 
+# three spaces between each letter and room for upto three spaces 
+# and the following punctutation ".", "-", ","
 def easierRegEx(string):
     LetterSeparator = ''
     regexDep = ""
@@ -13,7 +16,7 @@ def easierRegEx(string):
     # allows for zero-three spaces between the letters to account for encoding errors with spacing
     for letter in string:
         if (letter != ''):
-            LetterSeparator = LetterSeparator + letter + '\s{0,3}'+'[\xAD\-.,]{0,3}'
+            LetterSeparator = LetterSeparator + letter + '\s{0,3}'+'[\xAD\-.,*\']{0,3}'
     # for each word in the string, add a [.,\s]*
     # allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
     departmentWords = LetterSeparator.split()
@@ -22,30 +25,52 @@ def easierRegEx(string):
     return regexDep
 
 def skipContents(linesList, i):
+    #regex for contents
     contentpattern=easierRegEx('Contents')
+    
+    #regex for start of federal register 
     fedregstartpattern=easierRegEx('Published daily, except Sundays, Mondays,and days')
+    
+    #regex pattern for lots of hyphens (3-20)
     hyphenpattern=r"-{3,20}"
+    #regex pattern for lots of dashes (3-20)
     dashespattern=r'_{3,20}'
+    
+    #index to keep track of last line of contents
     lineIndex=0
+    
+    #index to keep trackk of whether it's been over 
     SinceLast=20
+    
+    #set index to first line of contents
     j=i
+    
+    #while not at the end of the lines list
     while j<(len(linesList)):
+        
         line=linesList[j]
+        
+        #match regex
         contentmatch=re.search(contentpattern, line)
         fedregstartmatch=re.search(fedregstartpattern, line, re.IGNORECASE)
         hyphenmatch=re.search(hyphenpattern, line)
         dashesmatch=re.search(dashespattern,line)
+        
+        #if it has not been over 20 lines since last line of contents
         if not (SinceLast==0):    
             if contentmatch or fedregstartmatch or hyphenmatch or dashesmatch:
+                #set index of last line of contents to lineIndex
                 lineIndex=j
+                #reset sinceLast
                 SinceLast=20
             else:
                 SinceLast-=1
         j+=1
     return lineIndex
             
+#find the last entry in the file
 def findLast(linesList):
-    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
     last=0
     #find the last FR doc and remove everything after
     findLast=True
@@ -62,9 +87,8 @@ def find_each_file(linesList, date, last):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
     contentsPatterns=easierRegEx('CONTENTS')
-    
     i=0
     #search through every line
     while i<(len(linesList)-1):
@@ -106,10 +130,12 @@ def findSectionHeaders(file):
     PRPattern2 = easierRegEx("Proposed Rule Makin")
     randRPattern = easierRegEx("RULES AND REGULATIONS")
     randRPattern2 = easierRegEx("Rules and Regulations")
+    
     #search through everyone line to find what section the file is in
     linesList=file[1].split('\n')
     for line in linesList:
         if not (sectionFound):
+            
             #Find which section it most likely is
             RRHeadermatch=re.search(randRPattern, line)
             RRHeadermatch2=re.search(randRPattern2, line)
@@ -117,6 +143,7 @@ def findSectionHeaders(file):
             PRHeaderMatch2=re.search(PRPattern2, line)
             noticeHeaderMatch=re.search(NoticePattern, line)
             noticeHeaderMatch2=re.search(NoticePattern2, line)
+            
             #store into right section and return back to loop
             if(RRHeadermatch or RRHeadermatch2):
                 sectionFound=True
@@ -165,6 +192,7 @@ def read_agency_names_from_csv(file_path,name):
     df = pd.read_csv(file_path)
     return df[name].tolist() 
 
+#search for department or agency
 def searchAg(lines_list, names_list, line,file, dep_ag,i,upOrDown, Found):
     #for every name of dep/agency within the csv 
     for name in names_list:
@@ -206,9 +234,9 @@ def find_dep_agency(file, lines_list, names_list, dep_ag):
     #initialize variables for whether the dep/agency has been found as well as the line counter
     lineLimit=30
     i=0
+    #while the index is less than linelimit and is not the last line in the index
     while i<lineLimit and i<len(lines_list):
         line=lines_list[i]
-        # print(line.encode())
         if len(line)<3:
             lineLimit+=1
         else:
@@ -246,7 +274,6 @@ def find_department(fileList):
         
         #find agency for the entry
         find_dep_agency(file, lines_list, agency_names_list, 5)
-    print("exit loop ")
         
 #store collected data into dataframes
 def makeDataframe(fileList):
@@ -295,27 +322,31 @@ def makeReplacements(fileList):
                                 found=True
                 
 def FRDocNo(FRDoc):
-    pattern=r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*c{1,2}.+\d{2}\s*-\s*(\d{4}))"
+    pattern=r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}.+-\s*(\d{4}))"
     patternMatch=re.search(pattern, FRDoc)
     num=0
     if patternMatch:
         num=int(patternMatch.group(2))
-    return num
+        return num
+    return 0
             
 def checkno(fileList, i):
-    if FRDocNo(fileList[i][0])!=0:
-        if FRDocNo(fileList[i+1][0])!=0:
-            if (FRDocNo(fileList[i+1][0])-2)<=FRDocNo(fileList[i][0])<=(FRDocNo(fileList[i+1][0])+2):
-                fileList[i][4]=fileList[i+1][4]
-                fileList[i][5]=fileList[i+1][5]
-        if FRDocNo(fileList[i-1][0])!=0:
-            if (FRDocNo(fileList[i+1][0])-2)<=FRDocNo(fileList[i][0])<=(FRDocNo(fileList[i+1][0])+2):
+    current_no=FRDocNo(fileList[i][0])
+    if i - 1 < len(fileList):
+        next_no=FRDocNo(fileList[i-1][0])
+    
+    if current_no!=0:
+        if next_no !=0:
+            if ((next_no-2)<=current_no<=(next_no+2)):            
                 fileList[i][4]=fileList[i-1][4]
                 fileList[i][5]=fileList[i-1][5]
+                if current_no==2961:
+                    print(fileList[i-1][4])
+                    print(fileList[i-1][5])
     
 def replaceEmptyAgDep(fileList):
     for index,file in enumerate(fileList):
-        if file[3]=="Not Found" or file[4]=="Not Found":
+        if file[5]=="Not Found":
             checkno(fileList,index)
         
 def analyze_file(filePath):
