@@ -100,10 +100,10 @@ number,agency.name
 99,Federal Reserve System
 100,DOD/GSA/NASA (FAR)
 101,Test McKay
-102,The White House Office
+102,White House
 103,Privacy and Civil Liberties Oversight Board
 104,Council on Environmental Quality
-105,Office of Science and Technology Policy
+105,Office of Science
 106,Millennium Challenge Corporation
 107,Inter-American Foundation
 108,Recovery Accountability and Transparency Board
@@ -180,7 +180,7 @@ number,agency.name
 179,Substance Abuse and Mental Health Services Administration
 180,Office of the Inspector General
 181,Office of Assistant Secretary for Health
-182,Centers for Medicare & Medicaid Services
+182,Centers for Medicare and Medicaid Services
 183,Office of Public Health and Science
 184,Administration for Children and Families
 185,Office of Human Development Services
@@ -206,7 +206,7 @@ number,agency.name
 205,Office for Equal Opportunity
 206,Office of the Solicitor
 207,Office of Hearings and Appeals
-208,United States Parole Commission
+208,Parole Commission
 209,Legal Activities
 210,Federal Bureau of Investigation
 211,Immigration and Naturalization Service
@@ -230,7 +230,7 @@ number,agency.name
 229,Wage and Hour Division
 230,Office of Worker's Compensation Program
 231,Office of Labor Management Standards
-232,Office of Federal Contract Compliance Programs
+232,Office of Federal Contract Compliance
 233,Office of the Assistant Secretary for Administration and Management
 234,Office of the Assistant Secretary for Veterans' Employment and Training
 235,Office of the American Workplace
@@ -319,7 +319,7 @@ number,agency.name
 318,Maritime Administration
 319,Saint Lawrence Seaway Development Corporation
 320,Pipeline and Hazardous Materials Safety Administration
-321,Bureau of Transportation Statistics - Aviation
+321,Bureau of Transportation Statistics
 322,Research and Innovative Technologies Administration
 323,Surface Transportation Board
 324,Research and Innovative Technologies Administration (Old)
@@ -332,7 +332,7 @@ number,agency.name
 331,Enforcement Center
 332,New Communities Development Corporation
 333,Policy Development and Research
-334,Office of Fair Housing and Equal Opportunity
+334,Office of Fair Housing
 335,Office of Lead-Based Paint and Poison Prevention
 336,Office of Federal Housing Enterprise Oversight
 337,Office of Public and Indian Housing
@@ -343,7 +343,7 @@ number,agency.name
 342,COMMISSION OF FINE ARTS
 343,NATIONAL FOUNDATION ON THE ARTS AND THE HUMANITIES
 344,Census Bureau
-345,LEGAL SERVICES CORPORATION
+345,Legal Services Corporation
 346,Committee for the Implementation of Textile Agreements
 347,Consumer Financial Protection Bureau
 348,Government Accountability Office
@@ -389,7 +389,7 @@ number,agency.name
 388,Soil Conservation Service
 389,Naval Research Advisory Committee
 390, Florida Advisory Commitittee
-391,NATIONAL RAILROAD PASSENGER CORPORATION 
+391,National Railroad Passenger Corporation (Amtrak)
 392,Office of Conservation and Solar Energy
 393,COST ACCOUNTING STANDARDS BOARD
 394,"DEPARTMENT OF HEALTH, EDUCATION, AND WELFARE"
@@ -449,17 +449,80 @@ number,agency.name
 448,Production and Marketing Administration
 449,Economic Cooperation Administration
 450,Oce of the Coordinator of Inter-American Affairs
-454,Defense Plant Corporation
-455,National Defense Research Committee
-456,Office for Emergency Management
-457,Civilian Public Service
-458,Foreign Broadcast Information Service
-459,National Defense Mediation Board
-450,Office of Censorshipffice of Housing Expediter
-451,Military Renegotiation Policy and Review Board
-452,Board of Economic Warfare
-453,War Food Administration
-454,War Production Board
-455,Office of Price Administration
-456,Veterans’ Administration 
-457,OFFICE OF ALIEN PROPERTY CUSTODIAN
+451,Defense Plant Corporation
+452,National Defense Research Committee
+453,Office for Emergency Management
+454,Civilian Public Service
+455,Foreign Broadcast Information Service
+456,National Defense Mediation Board
+457,Office of Censorshipffice of Housing Expediter
+458,Military Renegotiation Policy and Review Board
+459,Board of Economic Warfare
+460,War Food Administration
+461,War Production Board
+462,Office of Price Administration
+463,Veterans’ Administration 
+464,OFFICE OF ALIEN PROPERTY CUSTODIAN
+465,Agricultural Adjustment Administration
+466,Board of Tea Appeals
+467,Bureau of International Security and Nonproliferation
+468,Bureau of Verification, Compliance, and Implementation
+469,Farm Security Administration
+470,Foreign Economic Administration
+471,Federal Theatre Project
+472,Nationfal Ocean Service
+473,Office of the Coordinator of Inter-American Affairs
+474,Office of Technology Assessment
+475,Office of War Information
+486,Reconstruction Finance Corporation
+477,Works Progress Administration
+478,American Battle Monuments Commission
+479,Administration for Community Living
+480,Administration for Native Americans
+481,Architect of the Capitol
+482,Bureau of Safety and Environmental Enforcement
+483,Bureau of Ocean Energy Management
+484,Bureau of the Fiscal Service
+485,Bureau of Trust Funds Administration
+486,Central Intelligence Agency
+487,Commission on Security and Cooperation in Europe
+488,Congressional Budget Office
+489,Congressional Research Service
+490,Court of Appeals for Veterans Claims
+491,Cybersecurity & Infrastructure Security Agency
+492,Defense Advanced Research Projects Agency
+493,Defense Health Agency
+494,Environment and Natural Resources Division
+495,Federal Accounting Standards Advisory Board
+496,Federal Bureau of Prisons
+497,Federal Emergency Management Administration
+498,Federal Judicial Center
+499,Government Publishing Office
+500,Institute of Peace
+501,International Boundary and Water Commission
+502,Library of Congress
+503,Los Alamos National Laboratory
+504,Marine Corps
+505,Missile Defense Agency
+506,Mississippi River Commission
+507,National Center for Health Statistics
+508,National Constitution Center
+509,National Endowment for Democracy
+510,National Geospatial-Intelligence Agency
+511,National Institute of Allergy and Infectious Diseases
+512,National Institute of Biomedical Imaging and Bioengineering
+513,National Institute of Environmental Health Sciences
+514,National Reconnaissance Office
+515,National Renewable Energy Laboratory
+516,National Security Agency
+517,National Wildlife Research Center
+518,Naval Academy
+519,Oak Ridge National Laboratory
+520,Office of the Secretary of Defense
+521,Open World Leadership Center
+522,Postal Inspection Service
+523,Risk Management Agency
+524,Sentencing Commission
+525,State Justice Institute
+526,Western Area Power Administration
+527,Women's Bureau
