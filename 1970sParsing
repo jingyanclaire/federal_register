@@ -25,6 +25,7 @@ def findStart(linesList):
     #regex pattern for FR Doc. followed by four digits
     pattern = r"([FP]\s*R\s*D{1,2}\s*o{1,2}\s*c{1,2}\s*.+ f{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*.+[apfu].*[mn])"
     i=0
+    j=i
     while i<(len(linesList)-1):
         line=linesList[i]
         i=i+1
@@ -137,7 +138,7 @@ def findRulesAndRegulations(file):
     if file[2]==("NOPE"):
         # matches Chapter (roman numeral)
         randRPattern3=easierRegEx("Title")+"\d{1,2}"
-        randRPattern = "^"+easierRegEx("CHAPTER")+
+        randRPattern = "^"+easierRegEx("CHAPTER")
         randRPattern2=easierRegEx("SUBCHAPTER")
         linesList=file[1].split('\n')
         for line in linesList:
