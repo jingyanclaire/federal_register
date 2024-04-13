@@ -333,8 +333,7 @@ def analyze_file(filePath):
             if file[2]=="Notices":
                 noticeFound=True
         else:
-            file[2]="Notices"
-            
+            file[2]="Notices"       
     makeReplacements(fileList)
     find_department(fileList)
     replaceEmptyAgDep(fileList)
