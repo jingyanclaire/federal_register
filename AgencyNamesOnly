@@ -98,7 +98,7 @@ number,agency.name
 97,Grants.gov
 98,EEI Communications
 99,Federal Reserve System
-100,DOD/GSA/NASA (FAR)
+100,DOD/GSA/NASA
 101,Test McKay
 102,White House
 103,Privacy and Civil Liberties Oversight Board
@@ -322,7 +322,7 @@ number,agency.name
 321,Bureau of Transportation Statistics
 322,Research and Innovative Technologies Administration
 323,Surface Transportation Board
-324,Research and Innovative Technologies Administration (Old)
+324,Research and Innovative Technologies Administration
 325,Office of Housing
 326,Government National Mortgage Association
 327,Solar Energy and Energy Conservation Bank
@@ -389,7 +389,7 @@ number,agency.name
 388,Soil Conservation Service
 389,Naval Research Advisory Committee
 390, Florida Advisory Commitittee
-391,National Railroad Passenger Corporation (Amtrak)
+391,National Railroad Passenger Corporation
 392,Office of Conservation and Solar Energy
 393,COST ACCOUNTING STANDARDS BOARD
 394,"DEPARTMENT OF HEALTH, EDUCATION, AND WELFARE"
@@ -448,7 +448,7 @@ number,agency.name
 447,Social and Rehabilitation Service
 448,Production and Marketing Administration
 449,Economic Cooperation Administration
-450,Oce of the Coordinator of Inter-American Affairs
+450,Oce of the Coordinator of Inter American Affairs
 451,Defense Plant Corporation
 452,National Defense Research Committee
 453,Office for Emergency Management
@@ -466,12 +466,12 @@ number,agency.name
 465,Agricultural Adjustment Administration
 466,Board of Tea Appeals
 467,Bureau of International Security and Nonproliferation
-468,Bureau of Verification, Compliance, and Implementation
+468,"Bureau of Verification, Compliance, and Implementation"
 469,Farm Security Administration
 470,Foreign Economic Administration
 471,Federal Theatre Project
 472,Nationfal Ocean Service
-473,Office of the Coordinator of Inter-American Affairs
+473,Office of the Coordinator of Inter American Affairs
 474,Office of Technology Assessment
 475,Office of War Information
 486,Reconstruction Finance Corporation
@@ -500,29 +500,11 @@ number,agency.name
 499,Government Publishing Office
 500,Institute of Peace
 501,International Boundary and Water Commission
-502,Library of Congress
-503,Los Alamos National Laboratory
-504,Marine Corps
-505,Missile Defense Agency
-506,Mississippi River Commission
-507,National Center for Health Statistics
-508,National Constitution Center
-509,National Endowment for Democracy
-510,National Geospatial-Intelligence Agency
-511,National Institute of Allergy and Infectious Diseases
-512,National Institute of Biomedical Imaging and Bioengineering
-513,National Institute of Environmental Health Sciences
-514,National Reconnaissance Office
-515,National Renewable Energy Laboratory
-516,National Security Agency
-517,National Wildlife Research Center
-518,Naval Academy
-519,Oak Ridge National Laboratory
-520,Office of the Secretary of Defense
-521,Open World Leadership Center
-522,Postal Inspection Service
-523,Risk Management Agency
-524,Sentencing Commission
-525,State Justice Institute
-526,Western Area Power Administration
-527,Women's Bureau
+502,Economic Stabilization Agency
+503,Office of Defense Mobilization
+504,Federal Housing Administratio
+505,National Production Authority
+506,Defense Production Administration
+507,Price Mobilization
+508,The Renegotiation Board
+509,Defense Materials Procurement Agency
