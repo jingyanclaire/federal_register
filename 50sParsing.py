@@ -25,11 +25,14 @@ def easierRegEx(string):
     return regexDep
 
 def skipContents(linesList, i):
+    print("Entered skipContents")
     #regex for contents
     contentpattern=easierRegEx('Contents')
     
     #regex for start of federal register 
     fedregstartpattern=easierRegEx('Published daily, except Sundays, Mondays,and days')
+    fedregstartpattern2=easierRegEx('The Federal Register will be furnished by mail to subscribers')
+    fedregstartpattern3=easierRegEx('There are no restrictions on the republication of material appearing in the Federal Register')
     
     #regex pattern for lots of hyphens (3-20)
     hyphenpattern=r"-{3,20}"
@@ -37,7 +40,7 @@ def skipContents(linesList, i):
     dashespattern=r'_{3,20}'
     
     #index to keep track of last line of contents
-    lineIndex=0
+    lineIndex=i
     
     #index to keep trackk of whether it's been over 
     SinceLast=20
@@ -53,12 +56,14 @@ def skipContents(linesList, i):
         #match regex
         contentmatch=re.search(contentpattern, line)
         fedregstartmatch=re.search(fedregstartpattern, line, re.IGNORECASE)
+        fedregstartmatch2=re.search(fedregstartpattern2, line, re.IGNORECASE)
+        fedregstartmatch3=re.search(fedregstartpattern3, line, re.IGNORECASE)
         hyphenmatch=re.search(hyphenpattern, line)
         dashesmatch=re.search(dashespattern,line)
         
         #if it has not been over 20 lines since last line of contents
         if not (SinceLast==0):    
-            if contentmatch or fedregstartmatch or hyphenmatch or dashesmatch:
+            if contentmatch or fedregstartmatch or hyphenmatch or dashesmatch or fedregstartmatch2 or fedregstartmatch3:
                 #set index of last line of contents to lineIndex
                 lineIndex=j
                 #reset sinceLast
@@ -70,7 +75,7 @@ def skipContents(linesList, i):
             
 #find the last entry in the file
 def findLast(linesList):
-    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    pattern = r"([FP][.\\]*\s*R[.\\]*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
     last=0
     #find the last FR doc and remove everything after
     findLast=True
@@ -87,7 +92,7 @@ def find_each_file(linesList, date, last):
     #intialize list to store lists for every entry 
     fileList=[]
     #regex pattern for FR Doc. followed by four digits
-    pattern = r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
+    pattern = r"([FP][.\\]*\s*R[.\\]*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}\s*.+ [FP]{1,2}\s*((i{1,2}\s*[f,l]{1,2}\s*)|(U\s*))e{1,2}\s*d{1,2}\s*)"
     contentsPatterns=easierRegEx('CONTENTS')
     i=0
     #search through every line
@@ -322,7 +327,7 @@ def makeReplacements(fileList):
                                 found=True
                 
 def FRDocNo(FRDoc):
-    pattern=r"([FP].*\s*R.*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}.+-\s*(\d{4}))"
+    pattern=r"([FP][.\\]*\s*R[.\\]*\s*D{1,2}\s*o{1,2}\s*[oc]{1,2}.+[-r]\s*(\d{4}))"
     patternMatch=re.search(pattern, FRDoc)
     num=0
     if patternMatch:
@@ -360,7 +365,8 @@ def analyze_file(filePath):
     fileList=find_each_file(linesList, date, last)
     for file in fileList:
         file[2]=findSectionHeaders(file)
-        findRulesAndRegulations(file)
+    findRulesAndRegulations(file)
+    findProposedRules(file)
     makeReplacements(fileList)
     find_department(fileList)
     replaceEmptyAgDep(fileList)
