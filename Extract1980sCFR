@@ -12,10 +12,30 @@ def findSectionHeaders(index, file):
     RRHeader=easierRegEx("Rules and Regulations")
     PRHeader=easierRegEx("Proposed Rules")
     noticeHeader= easierRegEx("Notices")
+              
     #search first 10 lines within the index of where section header found
     for i in range(10):
         if not (sectionFound):
             line=file[index-i]
+            #Find which section it most likely is
+            RRHeadermatch=re.search(RRHeader, line, re.IGNORECASE)
+            PRHeaderMatch=re.search(PRHeader, line, re.IGNORECASE)
+            noticeHeaderMatch=re.search(noticeHeader, line, re.IGNORECASE)
+            #store into right section and return back to loop
+            if(RRHeadermatch):
+                sectionFound=True
+                section= 'Rules and Regulations'
+            elif (PRHeaderMatch):
+                sectionFound=True
+                section= "Proposed Rules"
+            elif(noticeHeaderMatch):
+                sectionFound=True
+                section="Notices"
+            else:
+                section="NOPE"  
+    for i in range(5):
+       if not (sectionFound):
+            line=file[index+i]
             #Find which section it most likely is
             RRHeadermatch=re.search(RRHeader, line, re.IGNORECASE)
             PRHeaderMatch=re.search(PRHeader, line, re.IGNORECASE)
@@ -44,7 +64,7 @@ def additionalSections(file_path, sectionDict):
     randRPattern = easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Rules and Regulations")
     prPattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+r"(.+?)"+r"(P\s{0,3}r\s{0,3}o\s{0,3}[pn]\s{0,3}o\s{0,3}s\s{0,3}e\s{0,3}d\s{0,3}[.,\s]*((R\s{0,3}u\s{0,3}l\s{0,3}e\s{0,3}s\s{0,3})|((R\s{0,3}i\s{0,3}d\s{0,3}e\s{0,3}s\s{0,3})))[.,\s]*)"
     noticePattern=easierRegEx("Federal Register")+"(.+?)"+r"[VY]\s*o\s*[li]\s*"+"(.*?)"+easierRegEx("No")+"(.+?)"+easierRegEx("Notices")
-    sectionStart=r"s\s{0,3}e\s{0,3}c\s{0,3}t\s{0,3}i\s{0,3}o\s{0,3}n\s{0,3}[.,\s]*.+\s{0,3}t\s{0,3}h\s{0,3}e\s{0,3}[.,\s]*\s{0,3}F\s{0,3}E\s{0,3}D\s{0,3}E\s{0,3}R\s{0,3}A\s{0,3}L\s{0,3}[.,\s]*\s{0,3}R\s{0,3}E\s{0,3}G\s{0,3}[IT]\s{0,3}S\s{0,3}T\s{0,3}E\s{0,3}R\s{0,3}[.,\s]*"
+    sectionStart=easierRegEx("this section of the federal register")
     #pattern for reader aids
     readerAids=easierRegEx("ReaderAidsFederalRegister") 
     presidentialDocuments=easierRegEx("PresidentialDocuments")
@@ -293,7 +313,7 @@ def easierRegEx(string):
     #allows for zero or more occurances of a white space, period or comma between words to account for 90s agency formatting
     departmentWords = LetterSeparator.split()
     for word in departmentWords:
-           regexDep=regexDep+word+'[.,\s]*'
+           regexDep=regexDep+word+'[.,\s\\n\d]*'
     return regexDep
 
  
